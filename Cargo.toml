@@ -1,0 +1,7 @@
+[package]
+name = "myerr"
+version = "0.1.0"
+authors = ["范辉 <fanhui@songguo7.com>"]
+edition = "2018"
+
+[dependencies]
