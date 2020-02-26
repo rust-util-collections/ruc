@@ -206,6 +206,7 @@ macro_rules! sleep_ms {
 macro_rules! errgen {
     ($msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
+            as Box<dyn MyError>
     }};
     () => {{
         $crate::errgen!("...")
