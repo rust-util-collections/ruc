@@ -6,7 +6,7 @@ use std::fmt::Display;
 pub type Result<T> = std::result::Result<T, Box<dyn MyError>>;
 
 pub trait MyError: Display + Send {
-    fn wrap_new(self: Box<Self>, msg: &str) -> Box<dyn MyError>;
+    fn wrap(self: Box<Self>, msg: &str) -> Box<dyn MyError>;
 
     fn cause(&mut self) -> Option<Box<dyn MyError>> {
         None
@@ -22,13 +22,14 @@ pub trait MyError: Display + Send {
         res
     }
 }
+
 pub trait MyResult<T> {
     fn c(self, msg: impl Display) -> Result<T>;
 }
 
-impl<T> MyResult<T> for Result<T> {
+impl<T, E: Into<Box<dyn MyError>>> MyResult<T> for std::result::Result<T, E> {
     fn c(self, msg: impl Display) -> Result<T> {
-        self.map_err(|e| e.wrap_new(&format!("{}", msg)))
+        self.map_err(|e| e.into().wrap(&format!("{}", msg)))
     }
 }
 
@@ -57,7 +58,7 @@ mod test {
     }
 
     impl MyError for DogError {
-        fn wrap_new(self: Box<Self>, msg: &str) -> Box<dyn MyError> {
+        fn wrap(self: Box<Self>, msg: &str) -> Box<dyn MyError> {
             Box::new(DogError::new(msg, Some(self)))
         }
 
@@ -96,7 +97,7 @@ mod test {
     }
 
     impl MyError for CatError {
-        fn wrap_new(self: Box<Self>, msg: &str) -> Box<dyn MyError> {
+        fn wrap(self: Box<Self>, msg: &str) -> Box<dyn MyError> {
             Box::new(CatError::new(msg, Some(self)))
         }
 
