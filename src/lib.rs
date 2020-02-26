@@ -1,96 +1,278 @@
-///
-///! # All errors will be converted to MyError.
-///
-use std::{
-    error::Error,
-    fmt::{Debug, Display},
-};
+//!
+//! # 通用工具集
+//!
 
-pub type Result<T> = std::result::Result<T, Box<dyn MyError>>;
+pub mod err;
 
-pub trait MyError: Display + Debug + Send {
-    fn cause(&mut self) -> Option<Box<dyn MyError>> {
-        None
-    }
+use err::*;
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
 
-    fn display_chain(&mut self) -> String {
-        let mut res = format!("\nError: {}", self);
-        let mut e = self.cause();
-        while let Some(mut c) = e {
-            res.push_str(&format!("\nCaused By: {}", c));
-            e = c.cause();
+lazy_static! {
+    static ref LOG_LK: Mutex<()> = Mutex::new(());
+}
+
+/// hashmap operations
+#[macro_export]
+macro_rules! map {
+    () => {{
+        std::collections::HashMap::new()
+    }};
+    ($(||)+) => {{
+        std::collections::HashMap::new
+    }};
+    ($($k: expr => $v: expr),+ $(,)*) => {{
+        let mut m = std::collections::HashMap::with_capacity([$(&$k),*].len());
+        $(m.insert($k, $v);)*
+        m
+    }};
+}
+
+/// vector operations
+#[macro_export]
+macro_rules! vct {
+    () => {
+        Vec::new()
+    };
+    ($(||)+) => {
+        Vec::new
+    };
+    ($($v: expr),+ $(,)*) => {{
+        vec![$($v),*]
+    }};
+    ($elem:expr; $n:expr) => {{
+        vec![$elem; $n]
+    }};
+}
+
+/// 高阶函数中提搞可读性.
+#[macro_export]
+macro_rules! alt {
+    ($condition: expr, $ops: block, $ops2: block) => {{
+        if $condition $ops else $ops2
+    }};
+    ($condition: expr, $ops: block) => {{
+        if $condition $ops
+    }};
+    ($condition: expr, $ops: expr, $ops2: expr) => {{
+        if $condition { $ops } else { $ops2 }
+    }};
+    ($condition: expr, $ops: expr) => {{
+        if $condition { $ops }
+    }};
+}
+
+/// 用于非关键环节打印提示性信息.
+#[macro_export]
+macro_rules! info {
+    ($ops: expr) => {{
+        $ops.c($crate::d!()).map_err($crate::p)
+    }};
+    ($ops: expr, $msg: expr) => {{
+        $ops.c($crate::d!($msg)).map_err($crate::p)
+    }};
+}
+
+/// 完全忽略返回值
+#[macro_export]
+macro_rules! omit {
+    ($ops: expr) => {{
+        let _ = $ops;
+    }};
+}
+
+/// 打印消息后直接丢弃返回值
+#[macro_export]
+macro_rules! info_omit {
+    ($ops: expr) => {{
+        $crate::omit!($crate::info!($ops));
+    }};
+    ($ops: expr, $msg: expr) => {{
+        $crate::omit!($crate::info!($ops, $msg));
+    }};
+}
+
+/// 打印模块路径, 文件名称, 行号等 Debug 信息
+#[macro_export]
+macro_rules! d {
+    ($x: expr) => {{
+        format!("\x1b[31m{:?}\x1b[00m\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
+            $x, file!(), line!())
+    }};
+    () => {{
+        format!("...\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
+                file!(), line!())
+    }};
+}
+
+/// 打印平面信息
+#[macro_export]
+macro_rules! pd {
+    ($x: expr) => {{
+        eprintln!("\n{}", $crate::d!($x));
+    }};
+}
+
+/// get current UTC-timestamp
+#[macro_export]
+macro_rules! ts {
+    () => {{
+        std::time::SystemTime::now()
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+    }};
+}
+
+/// get current native-local-datatime
+#[macro_export]
+macro_rules! datetime_local {
+    ($ts: expr) => {{
+        time::OffsetDateTime::from_unix_timestamp($ts as i64)
+            .to_offset(time::offset!(+8))
+            .format("%F %T")
+    }};
+    () => {{
+        datetime_local!($crate::ts!())
+    }};
+}
+
+#[inline(always)]
+fn get_pidns(pid: u32) -> Result<String> {
+    std::fs::read_link(format!("/proc/{}/ns/pid", pid))
+        .c(crate::d!())
+        .map(|p| p.to_string_lossy().into_owned())
+}
+
+/// 打印 error_chain
+#[inline(always)]
+#[allow(unused_variables)]
+pub fn p(mut e: Box<dyn MyError>) {
+    let pid = std::process::id();
+
+    // 内部不能再调用`p`, 否则可能无限循环
+    let ns = get_pidns(pid).unwrap();
+
+    let lk = LOG_LK.lock();
+    eprintln!(
+        "\n\x1b[31;01m{}[{}] {}\x1b[00m{}",
+        ns,
+        pid,
+        datetime_local!(),
+        e.display_chain()
+    );
+}
+
+/// Just a panic
+#[macro_export]
+macro_rules! die {
+    ($e:expr) => {{
+        $crate::pd!($e);
+        $crate::die!();
+    }};
+    () => {
+        panic!();
+    };
+}
+
+/// 打印 error_chain 之后 Panic
+#[inline(always)]
+pub fn pdie(e: Box<dyn MyError>) -> ! {
+    p(e);
+    crate::die!();
+}
+
+/// 打印错误信息并 Panic
+#[macro_export]
+macro_rules! pnk {
+    ($ops: expr) => {{
+        $ops.c($crate::d!())
+            .unwrap_or_else(|e| $crate::pdie(e))
+    }};
+    ($ops: expr, $msg: expr) => {{
+        $ops.c($crate::d!($msg))
+            .unwrap_or_else(|e| $crate::pdie(e))
+    }};
+}
+
+/// sleep
+#[macro_export]
+macro_rules! sleep_ms {
+    ($n: expr) => {{
+        std::thread::sleep(std::time::Duration::from_millis($n));
+    }};
+}
+
+/// Generate error with debug info
+#[macro_export]
+macro_rules! errgen {
+    ($msg: expr) => {{
+        $crate::err::SimpleError::new($crate::d!($msg), None)
+    }};
+    () => {{
+        $crate::errgen!("...")
+    }};
+}
+
+/// Generate sys-error with debug info
+#[macro_export]
+macro_rules! errgen_sys {
+    () => {{
+        let e = $crate::errgen!($crate::get_errdesc());
+        reset_errno();
+        e
+    }};
+}
+
+/// test assert
+#[macro_export]
+macro_rules! so_eq {
+    ($lv: expr, $rv: expr) => {{
+        let l = $lv;
+        let r = $rv;
+        if l != r {
+            return Err($crate::errgen!(format!(
+                "Assert failed: {} == {}",
+                l, r
+            )));
         }
-        res
-    }
+    }};
 }
 
-pub trait MyResult<T> {
-    fn c(self, msg: impl Display) -> Result<T>;
-}
-
-impl<T> MyResult<T> for Result<T> {
-    fn c(self, msg: impl Display) -> Result<T> {
-        self.map_err(|e| MiniError::new(msg, Some(e)).into())
-    }
-}
-
-impl<T> MyResult<T> for Option<T> {
-    fn c(self, msg: impl Display) -> Result<T> {
-        self.ok_or_else(|| MiniError::new(msg, None).into())
-    }
-}
-
-impl<T, E: Error> MyResult<T> for std::result::Result<T, E> {
-    fn c(self, msg: impl Display) -> Result<T> {
-        self.map_err(|e| {
-            MiniError::new(msg, Some(Box::new(MiniError::new(e, None)))).into()
-        })
-    }
-}
-
-#[derive(Debug)]
-struct MiniError {
-    msg: String,
-    cause: Option<Box<dyn MyError>>,
-}
-
-impl MiniError {
-    fn new(msg: impl Display, cause: Option<Box<dyn MyError>>) -> Self {
-        MiniError {
-            msg: format!("{}", msg),
-            cause,
+/// test assert
+#[macro_export]
+macro_rules! so_le {
+    ($lv: expr, $rv: expr) => {{
+        let l = $lv;
+        let r = $rv;
+        if l > r {
+            return Err($crate::errgen!(format!(
+                "Assert failed: {} <= {}",
+                l, r
+            )));
         }
-    }
+    }};
 }
 
-impl Display for MiniError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl Into<Box<dyn MyError>> for MiniError {
-    fn into(self) -> Box<dyn MyError> {
-        Box::new(self)
-    }
-}
-
-impl MyError for MiniError {
-    fn cause(&mut self) -> Option<Box<dyn MyError>> {
-        self.cause.take()
-    }
+/// ok
+#[macro_export]
+macro_rules! ok {
+    () => {{
+        let ok: std::io::Result<_> = Ok(());
+        ok.c(d!())
+    }};
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
+    #![allow(non_snake_case)]
+
     use super::*;
+    use std::process;
 
     #[test]
-    fn test() {
-        let res: Result<i32> = Err(MiniError::new("***", None).into());
-        println!(
-            "{}",
-            res.c("dog").c("cat").c("pig").unwrap_err().display_chain()
-        );
+    fn T_get_pidns() {
+        let ns_name = pnk!(get_pidns(process::id()));
+        assert!(1 < ns_name.len());
     }
 }
