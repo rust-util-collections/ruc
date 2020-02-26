@@ -6,6 +6,8 @@ use std::fmt::Display;
 pub type Result<T> = std::result::Result<T, Box<dyn MyError>>;
 
 pub trait MyError: Display + Send {
+    fn wrap_new(self: Box<Self>, msg: &str) -> Box<dyn MyError>;
+
     fn cause(&mut self) -> Option<Box<dyn MyError>> {
         None
     }
@@ -22,6 +24,12 @@ pub trait MyError: Display + Send {
 }
 pub trait MyResult<T> {
     fn c(self, msg: impl Display) -> Result<T>;
+}
+
+impl<T> MyResult<T> for Result<T> {
+    fn c(self, msg: impl Display) -> Result<T> {
+        self.map_err(|e| e.wrap_new(&format!("{}", msg)))
+    }
 }
 
 #[cfg(test)]
@@ -49,6 +57,10 @@ mod test {
     }
 
     impl MyError for DogError {
+        fn wrap_new(self: Box<Self>, msg: &str) -> Box<dyn MyError> {
+            Box::new(DogError::new(msg, Some(self)))
+        }
+
         fn cause(&mut self) -> Option<Box<dyn MyError>> {
             self.cause.take()
         }
@@ -84,6 +96,10 @@ mod test {
     }
 
     impl MyError for CatError {
+        fn wrap_new(self: Box<Self>, msg: &str) -> Box<dyn MyError> {
+            Box::new(CatError::new(msg, Some(self)))
+        }
+
         fn cause(&mut self) -> Option<Box<dyn MyError>> {
             self.cause.take()
         }
