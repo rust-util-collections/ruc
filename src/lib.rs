@@ -186,12 +186,10 @@ pub fn pdie(e: Box<dyn MyError>) -> ! {
 #[macro_export]
 macro_rules! pnk {
     ($ops: expr) => {{
-        $ops.c($crate::d!())
-            .unwrap_or_else(|e| $crate::pdie(e))
+        $ops.c($crate::d!()).unwrap_or_else(|e| $crate::pdie(e))
     }};
     ($ops: expr, $msg: expr) => {{
-        $ops.c($crate::d!($msg))
-            .unwrap_or_else(|e| $crate::pdie(e))
+        $ops.c($crate::d!($msg)).unwrap_or_else(|e| $crate::pdie(e))
     }};
 }
 
@@ -207,7 +205,7 @@ macro_rules! sleep_ms {
 #[macro_export]
 macro_rules! errgen {
     ($msg: expr) => {{
-        $crate::err::SimpleError::new($crate::d!($msg), None)
+        Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
     }};
     () => {{
         $crate::errgen!("...")
