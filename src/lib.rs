@@ -1,13 +1,11 @@
 ///
 ///! # All errors will be converted to MyError.
 ///
-use std::fmt::Display;
+use std::{error::Error, fmt};
 
 pub type Result<T> = std::result::Result<T, Box<dyn MyError>>;
 
-pub trait MyError: Display + Send {
-    fn wrap(self: Box<Self>, msg: &str) -> Box<dyn MyError>;
-
+pub trait MyError: fmt::Display + Send {
     fn cause(&mut self) -> Option<Box<dyn MyError>> {
         None
     }
@@ -24,12 +22,58 @@ pub trait MyError: Display + Send {
 }
 
 pub trait MyResult<T> {
-    fn c(self, msg: impl Display) -> Result<T>;
+    fn c(self, msg: impl fmt::Display) -> Result<T>;
 }
 
-impl<T, E: Into<Box<dyn MyError>>> MyResult<T> for std::result::Result<T, E> {
-    fn c(self, msg: impl Display) -> Result<T> {
-        self.map_err(|e| e.into().wrap(&format!("{}", msg)))
+impl<T> MyResult<T> for Result<T> {
+    fn c(self, msg: impl fmt::Display) -> Result<T> {
+        self.map_err(|e| MiniError::new(msg, Some(e)).into())
+    }
+}
+
+impl<T> MyResult<T> for Option<T> {
+    fn c(self, msg: impl fmt::Display) -> Result<T> {
+        self.ok_or_else(|| MiniError::new(msg, None).into())
+    }
+}
+
+impl<T, E: Error> MyResult<T> for std::result::Result<T, E> {
+    fn c(self, msg: impl fmt::Display) -> Result<T> {
+        self.map_err(|e| {
+            MiniError::new(msg, Some(Box::new(MiniError::new(e, None)))).into()
+        })
+    }
+}
+
+struct MiniError {
+    msg: String,
+    cause: Option<Box<dyn MyError>>,
+}
+
+impl MiniError {
+    fn new(msg: impl fmt::Display, cause: Option<Box<dyn MyError>>) -> Self {
+        MiniError {
+            msg: format!("{}", msg),
+            cause,
+        }
+    }
+}
+
+impl fmt::Display for MiniError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.msg)
+    }
+}
+
+impl Into<Box<dyn MyError>> for MiniError {
+    fn into(self) -> Box<dyn MyError> {
+        Box::new(self)
+    }
+}
+
+impl MyError for MiniError {
+    fn cause(&mut self) -> Option<Box<dyn MyError>> {
+        self.cause.take()
     }
 }
 
@@ -37,88 +81,12 @@ impl<T, E: Into<Box<dyn MyError>>> MyResult<T> for std::result::Result<T, E> {
 mod test {
     use super::*;
 
-    struct DogError {
-        msg: String,
-        cause: Option<Box<dyn MyError>>,
-    }
-
-    impl DogError {
-        fn new(msg: impl Display, cause: Option<Box<dyn MyError>>) -> Self {
-            DogError {
-                msg: format!("{}", msg),
-                cause,
-            }
-        }
-    }
-
-    impl std::fmt::Display for DogError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", self.msg)
-        }
-    }
-
-    impl MyError for DogError {
-        fn wrap(self: Box<Self>, msg: &str) -> Box<dyn MyError> {
-            Box::new(DogError::new(msg, Some(self)))
-        }
-
-        fn cause(&mut self) -> Option<Box<dyn MyError>> {
-            self.cause.take()
-        }
-    }
-
-    impl<T> MyResult<T> for std::result::Result<T, DogError> {
-        fn c(self, msg: impl Display) -> Result<T> {
-            self.map_err(|e| {
-                Box::new(DogError::new(msg, Some(Box::new(e))))
-                    as Box<dyn MyError>
-            })
-        }
-    }
-
-    struct CatError {
-        msg: String,
-        cause: Option<Box<dyn MyError>>,
-    }
-
-    impl CatError {
-        fn new(msg: impl Display, cause: Option<Box<dyn MyError>>) -> Self {
-            CatError {
-                msg: format!("{}", msg),
-                cause,
-            }
-        }
-    }
-
-    impl std::fmt::Display for CatError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", self.msg)
-        }
-    }
-
-    impl MyError for CatError {
-        fn wrap(self: Box<Self>, msg: &str) -> Box<dyn MyError> {
-            Box::new(CatError::new(msg, Some(self)))
-        }
-
-        fn cause(&mut self) -> Option<Box<dyn MyError>> {
-            self.cause.take()
-        }
-    }
-
-    impl<T> MyResult<T> for std::result::Result<T, CatError> {
-        fn c(self, msg: impl Display) -> Result<T> {
-            self.map_err(|e| {
-                Box::new(CatError::new(msg, Some(Box::new(e))))
-                    as Box<dyn MyError>
-            })
-        }
-    }
-
     #[test]
     fn test() {
-        let e: Result<()> = Err(DogError::new("dog dog dog", None))
-            .c(CatError::new("cat cat cat", None));
-        println!("{}", e.unwrap_err().display_chain());
+        let res: Result<i32> = Err(MiniError::new("***", None).into());
+        println!(
+            "{}",
+            res.c("dog").c("cat").c("pig").unwrap_err().display_chain()
+        );
     }
 }
