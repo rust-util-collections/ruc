@@ -26,6 +26,12 @@ pub trait MyError: Display + Debug + Send {
 
 pub trait MyResult<T> {
     fn c(self, msg: impl Display) -> Result<T>;
+    fn cd(self, msg: impl Debug) -> Result<T>
+    where
+        Self: Sized,
+    {
+        self.c(format!("{:?}", msg))
+    }
 }
 
 impl<T> MyResult<T> for Result<T> {
