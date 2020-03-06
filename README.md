@@ -1,0 +1,3 @@
+# myerr
+
+MyError trait.
