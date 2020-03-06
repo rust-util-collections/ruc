@@ -203,21 +203,21 @@ macro_rules! sleep_ms {
 
 /// Generate error with debug info
 #[macro_export]
-macro_rules! errgen {
+macro_rules! eg {
     ($msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
             as Box<dyn MyError>
     }};
     () => {{
-        $crate::errgen!("...")
+        $crate::eg!("...")
     }};
 }
 
 /// Generate sys-error with debug info
 #[macro_export]
-macro_rules! errgen_sys {
+macro_rules! eg_sys {
     () => {{
-        let e = $crate::errgen!($crate::get_errdesc());
+        let e = $crate::eg!($crate::get_errdesc());
         reset_errno();
         e
     }};
@@ -230,10 +230,7 @@ macro_rules! so_eq {
         let l = $lv;
         let r = $rv;
         if l != r {
-            return Err($crate::errgen!(format!(
-                "Assert failed: {} == {}",
-                l, r
-            )));
+            return Err($crate::eg!(format!("Assert failed: {} == {}", l, r)));
         }
     }};
 }
@@ -245,10 +242,7 @@ macro_rules! so_le {
         let l = $lv;
         let r = $rv;
         if l > r {
-            return Err($crate::errgen!(format!(
-                "Assert failed: {} <= {}",
-                l, r
-            )));
+            return Err($crate::eg!(format!("Assert failed: {} <= {}", l, r)));
         }
     }};
 }
