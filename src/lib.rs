@@ -230,7 +230,25 @@ macro_rules! so_eq {
         let l = $lv;
         let r = $rv;
         if l != r {
-            return Err($crate::eg!(format!("Assert failed: {} == {}", l, r)));
+            return Err($crate::eg!(format!(
+                "Assert failed: {:?} == {:?}",
+                l, r
+            )));
+        }
+    }};
+}
+
+/// test assert
+#[macro_export]
+macro_rules! so_ne {
+    ($lv: expr, $rv: expr) => {{
+        let l = $lv;
+        let r = $rv;
+        if l == r {
+            return Err($crate::eg!(format!(
+                "Assert failed: {:?} != {:?}",
+                l, r
+            )));
         }
     }};
 }
@@ -242,7 +260,10 @@ macro_rules! so_le {
         let l = $lv;
         let r = $rv;
         if l > r {
-            return Err($crate::eg!(format!("Assert failed: {} <= {}", l, r)));
+            return Err($crate::eg!(format!(
+                "Assert failed: {:?} <= {:?}",
+                l, r
+            )));
         }
     }};
 }
