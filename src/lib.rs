@@ -4,6 +4,9 @@
 
 pub mod err;
 
+mod io_sleep;
+pub use io_sleep::*;
+
 use err::*;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
