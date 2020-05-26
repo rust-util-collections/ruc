@@ -1,7 +1,7 @@
 [package]
 name = "myutil"
 version = "0.1.0"
-authors = ["范辉 <fanhui@songguo7.com>"]
+authors = ["范辉 <hui.fan@mail.ru>"]
 edition = "2018"
 
 [dependencies]
