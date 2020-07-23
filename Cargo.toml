@@ -1,11 +1,10 @@
 [package]
 name = "myutil"
 version = "0.1.0"
-authors = ["范辉 <fanhui@songguo7.com>"]
+authors = ["范辉 <hui.fan@mail.ru>"]
 edition = "2018"
 
 [dependencies]
 parking_lot = "0.10"
 lazy_static = "1.4"
 time = "0.2"
-futures-timer = "3.0"
