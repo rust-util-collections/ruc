@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 use parking_lot::Mutex;
 
 lazy_static! {
-    static ref LOG_LK: Mutex<()> = Mutex::new(());
+    static ref LOG_LK: Mutex<u64> = Mutex::new(0);
 }
 
 /// hashmap operations
@@ -144,23 +144,31 @@ fn get_pidns(pid: u32) -> Result<String> {
         .map(|p| p.to_string_lossy().into_owned())
 }
 
-/// 打印 error_chain
-#[inline(always)]
-#[allow(unused_variables)]
-pub fn p(mut e: Box<dyn MyError>) {
+/// 生成日志内容
+pub fn genlog(mut e: Box<dyn MyError>) -> String {
     let pid = std::process::id();
 
     // 内部不能再调用`p`, 否则可能无限循环
     let ns = get_pidns(pid).unwrap();
 
-    let lk = LOG_LK.lock();
-    eprintln!(
-        "\n\x1b[31;01m{}[{}] {}\x1b[00m{}",
+    let mut logn = LOG_LK.lock();
+    let res = format!(
+        "\n\x1b[31;01mNo.{} [ns: {}][pid: {}] {}\x1b[00m{}",
+        logn,
         ns,
         pid,
         datetime_local!(),
         e.display_chain()
     );
+    *logn += 1;
+
+    res
+}
+
+/// print log
+#[inline(always)]
+pub fn p(e: Box<dyn MyError>) {
+    eprintln!("{}", genlog(e));
 }
 
 /// Just a panic
