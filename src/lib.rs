@@ -141,7 +141,14 @@ macro_rules! datetime_local {
 fn get_pidns(pid: u32) -> Result<String> {
     std::fs::read_link(format!("/proc/{}/ns/pid", pid))
         .c(crate::d!())
-        .map(|p| p.to_string_lossy().into_owned())
+        .map(|p| {
+            p.to_string_lossy()
+                .strip_prefix("pid:[")
+                .map(|s| s.strip_suffix("]"))
+                .flatten()
+                .unwrap()
+                .to_owned()
+        })
 }
 
 /// 生成日志内容
@@ -153,12 +160,12 @@ pub fn genlog(mut e: Box<dyn MyError>) -> String {
 
     let mut logn = LOG_LK.lock();
     let res = format!(
-        "\n\x1b[31;01m{n:>0width$} [ns: {ns}][pid: {pid}] {ts}\x1b[00m{msg}",
+        "\n\x1b[31;01m{n:>0width$} [pidns: {ns}][pid: {pid}] {time}\x1b[00m{msg}",
         width = 6,
         n = logn,
         ns = ns,
         pid = pid,
-        ts = datetime_local!(),
+        time = datetime_local!(),
         msg = e.display_chain(),
     );
     *logn += 1;

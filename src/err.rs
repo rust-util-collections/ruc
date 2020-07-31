@@ -17,7 +17,8 @@ pub trait MyError: Display + Debug + Send {
         let mut res = format!("\nError: {}", self);
         let mut e = self.cause();
         while let Some(mut c) = e {
-            res.push_str(&format!("\nCaused By: {}", c));
+            res.push_str("\nCaused By: ");
+            res.push_str(c.to_string().as_str());
             e = c.cause();
         }
         res
