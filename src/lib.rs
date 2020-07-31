@@ -153,12 +153,13 @@ pub fn genlog(mut e: Box<dyn MyError>) -> String {
 
     let mut logn = LOG_LK.lock();
     let res = format!(
-        "\n\x1b[31;01mNo.{} [ns: {}][pid: {}] {}\x1b[00m{}",
-        logn,
-        ns,
-        pid,
-        datetime_local!(),
-        e.display_chain()
+        "\n\x1b[31;01m{n:>0width$} [ns: {ns}][pid: {pid}] {ts}\x1b[00m{msg}",
+        width = 6,
+        n = logn,
+        ns = ns,
+        pid = pid,
+        ts = datetime_local!(),
+        msg = e.display_chain(),
     );
     *logn += 1;
 
