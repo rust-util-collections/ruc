@@ -96,7 +96,7 @@ macro_rules! info_omit {
 #[macro_export]
 macro_rules! d {
     ($x: expr) => {{
-        format!("\x1b[31m{:?}\x1b[00m\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
+        format!("\x1b[31m{}\x1b[00m\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
             $x, file!(), line!())
     }};
     () => {{
