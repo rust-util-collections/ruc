@@ -5,6 +5,6 @@ authors = ["范辉 <hui.fan@mail.ru>"]
 edition = "2018"
 
 [dependencies]
-parking_lot = "0.10"
-lazy_static = "1.4"
+parking_lot = "0"
+lazy_static = "1"
 time = "0.2"
