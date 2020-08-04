@@ -229,16 +229,6 @@ macro_rules! eg {
     }};
 }
 
-/// Generate sys-error with debug info
-#[macro_export]
-macro_rules! eg_sys {
-    () => {{
-        let e = $crate::eg!($crate::get_errdesc());
-        reset_errno();
-        e
-    }};
-}
-
 /// test assert
 #[macro_export]
 macro_rules! so_eq {
