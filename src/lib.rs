@@ -96,11 +96,14 @@ macro_rules! info_omit {
 #[macro_export]
 macro_rules! d {
     ($x: expr) => {{
-        format!("\x1b[31m{}\x1b[00m\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
-            $x, file!(), line!())
+        let mut res = "\x1b[31m".to_string();
+        res.push_str(&$x.to_string());
+        res.push_str("\x1b[00m");
+        res.push_str(&d!());
+        res
     }};
     () => {{
-        format!("...\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
+        format!("\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
                 file!(), line!())
     }};
 }
@@ -143,10 +146,8 @@ fn get_pidns(pid: u32) -> Result<String> {
         .c(crate::d!())
         .map(|p| {
             p.to_string_lossy()
-                .strip_prefix("pid:[")
-                .map(|s| s.strip_suffix("]"))
-                .flatten()
-                .unwrap()
+                .trim_start_matches("pid:[")
+                .trim_end_matches(']')
                 .to_owned()
         })
 }
@@ -159,15 +160,15 @@ pub fn genlog(mut e: Box<dyn MyError>) -> String {
     let ns = get_pidns(pid).unwrap();
 
     let mut logn = LOG_LK.lock();
-    let res = format!(
-        "\n\x1b[31;01m{n:>0width$} [pidns: {ns}][pid: {pid}] {time}\x1b[00m{msg}",
+    let mut res = format!(
+        "\n\x1b[31;01m{n:>0width$} [pidns: {ns}][pid: {pid}] {time}\x1b[00m",
         width = 6,
         n = logn,
         ns = ns,
         pid = pid,
         time = datetime_local!(),
-        msg = e.display_chain(),
     );
+    res.push_str(&e.display_chain());
     *logn += 1;
 
     res
