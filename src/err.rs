@@ -14,10 +14,12 @@ pub trait MyError: Display + Debug + Send {
     }
 
     fn display_chain(&mut self) -> String {
-        let mut res = format!("\nError: {}", self);
+        let mut res = "\nError: ".to_owned();
+        res.push_str(&self.to_string());
         let mut e = self.cause();
         while let Some(mut c) = e {
-            res.push_str(&format!("\nCaused By: {}", c));
+            res.push_str("\nCaused By: ");
+            res.push_str(c.to_string().as_str());
             e = c.cause();
         }
         res
@@ -64,7 +66,7 @@ pub struct SimpleError {
 impl SimpleError {
     pub fn new(msg: impl Display, cause: Option<Box<dyn MyError>>) -> Self {
         SimpleError {
-            msg: format!("{}", msg),
+            msg: msg.to_string(),
             cause,
         }
     }

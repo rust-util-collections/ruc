@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 use parking_lot::Mutex;
 
 lazy_static! {
-    static ref LOG_LK: Mutex<()> = Mutex::new(());
+    static ref LOG_LK: Mutex<u64> = Mutex::new(0);
 }
 
 /// hashmap operations
@@ -96,11 +96,14 @@ macro_rules! info_omit {
 #[macro_export]
 macro_rules! d {
     ($x: expr) => {{
-        format!("\x1b[31m{:?}\x1b[00m\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
-            $x, file!(), line!())
+        let mut res = "\x1b[31m".to_string();
+        res.push_str(&$x.to_string());
+        res.push_str("\x1b[00m");
+        res.push_str(&d!());
+        res
     }};
     () => {{
-        format!("...\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
+        format!("\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
                 file!(), line!())
     }};
 }
@@ -141,26 +144,40 @@ macro_rules! datetime_local {
 fn get_pidns(pid: u32) -> Result<String> {
     std::fs::read_link(format!("/proc/{}/ns/pid", pid))
         .c(crate::d!())
-        .map(|p| p.to_string_lossy().into_owned())
+        .map(|p| {
+            p.to_string_lossy()
+                .trim_start_matches("pid:[")
+                .trim_end_matches(']')
+                .to_owned()
+        })
 }
 
-/// 打印 error_chain
-#[inline(always)]
-#[allow(unused_variables)]
-pub fn p(mut e: Box<dyn MyError>) {
+/// 生成日志内容
+pub fn genlog(mut e: Box<dyn MyError>) -> String {
     let pid = std::process::id();
 
     // 内部不能再调用`p`, 否则可能无限循环
     let ns = get_pidns(pid).unwrap();
 
-    let lk = LOG_LK.lock();
-    eprintln!(
-        "\n\x1b[31;01m{}[{}] {}\x1b[00m{}",
-        ns,
-        pid,
-        datetime_local!(),
-        e.display_chain()
+    let mut logn = LOG_LK.lock();
+    let mut res = format!(
+        "\n\x1b[31;01m{n:>0width$} [pidns: {ns}][pid: {pid}] {time}\x1b[00m",
+        width = 6,
+        n = logn,
+        ns = ns,
+        pid = pid,
+        time = datetime_local!(),
     );
+    res.push_str(&e.display_chain());
+    *logn += 1;
+
+    res
+}
+
+/// print log
+#[inline(always)]
+pub fn p(e: Box<dyn MyError>) {
+    eprintln!("{}", genlog(e));
 }
 
 /// Just a panic
@@ -203,23 +220,13 @@ macro_rules! sleep_ms {
 
 /// Generate error with debug info
 #[macro_export]
-macro_rules! errgen {
+macro_rules! eg {
     ($msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
             as Box<dyn MyError>
     }};
     () => {{
-        $crate::errgen!("...")
-    }};
-}
-
-/// Generate sys-error with debug info
-#[macro_export]
-macro_rules! errgen_sys {
-    () => {{
-        let e = $crate::errgen!($crate::get_errdesc());
-        reset_errno();
-        e
+        $crate::eg!("...")
     }};
 }
 
@@ -230,8 +237,23 @@ macro_rules! so_eq {
         let l = $lv;
         let r = $rv;
         if l != r {
-            return Err($crate::errgen!(format!(
-                "Assert failed: {} == {}",
+            return Err($crate::eg!(format!(
+                "Assert failed: {:?} == {:?}",
+                l, r
+            )));
+        }
+    }};
+}
+
+/// test assert
+#[macro_export]
+macro_rules! so_ne {
+    ($lv: expr, $rv: expr) => {{
+        let l = $lv;
+        let r = $rv;
+        if l == r {
+            return Err($crate::eg!(format!(
+                "Assert failed: {:?} != {:?}",
                 l, r
             )));
         }
@@ -245,8 +267,8 @@ macro_rules! so_le {
         let l = $lv;
         let r = $rv;
         if l > r {
-            return Err($crate::errgen!(format!(
-                "Assert failed: {} <= {}",
+            return Err($crate::eg!(format!(
+                "Assert failed: {:?} <= {:?}",
                 l, r
             )));
         }
