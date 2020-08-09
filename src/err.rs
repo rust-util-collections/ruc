@@ -14,7 +14,7 @@ pub trait MyError: Display + Debug + Send {
     }
 
     fn display_chain(&mut self) -> String {
-        let mut res = "\nError: {}".to_owned();
+        let mut res = "\nError: ".to_owned();
         res.push_str(&self.to_string());
         let mut e = self.cause();
         while let Some(mut c) = e {
