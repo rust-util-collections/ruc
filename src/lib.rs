@@ -141,6 +141,7 @@ macro_rules! datetime_local {
 }
 
 #[inline(always)]
+#[cfg(target_os = "linux")]
 fn get_pidns(pid: u32) -> Result<String> {
     std::fs::read_link(format!("/proc/{}/ns/pid", pid))
         .c(crate::d!())
@@ -150,6 +151,12 @@ fn get_pidns(pid: u32) -> Result<String> {
                 .trim_end_matches(']')
                 .to_owned()
         })
+}
+
+#[inline(always)]
+#[cfg(not(target_os = "linux"))]
+fn get_pidns(_pid: u32) -> Result<String> {
+    Ok("NULL".to_owned())
 }
 
 /// 生成日志内容
