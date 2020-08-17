@@ -25,12 +25,7 @@ pub trait MyError: Display + Debug + Send {
             });
             res.push_str(&prefix);
             res.push_str("Caused By: ");
-            res.push_str(
-                &c.to_string()
-                    .trim_end()
-                    .trim_end_matches('\n')
-                    .replace("\n", &prefix),
-            );
+            res.push_str(&c.to_string().replace("\n", &prefix));
             indent_num += 1;
             e = c.cause();
         }
