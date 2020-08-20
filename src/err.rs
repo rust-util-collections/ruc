@@ -17,9 +17,16 @@ pub trait MyError: Display + Debug + Send {
         let mut res = "\nError: ".to_owned();
         res.push_str(&self.to_string());
         let mut e = self.cause();
+        let mut indent_num = 0;
         while let Some(mut c) = e {
-            res.push_str("\nCaused By: ");
-            res.push_str(c.to_string().as_str());
+            let mut prefix = "\n".to_owned();
+            (0..indent_num).for_each(|_| {
+                prefix.push_str("    ");
+            });
+            res.push_str(&prefix);
+            res.push_str("Caused By: ");
+            res.push_str(&c.to_string().replace("\n", &prefix));
+            indent_num += 1;
             e = c.cause();
         }
         res

@@ -6,7 +6,7 @@ pub mod err;
 
 use err::*;
 use lazy_static::lazy_static;
-use parking_lot::Mutex;
+use std::sync::Mutex;
 
 lazy_static! {
     static ref LOG_LK: Mutex<u64> = Mutex::new(0);
@@ -141,6 +141,7 @@ macro_rules! datetime_local {
 }
 
 #[inline(always)]
+#[cfg(target_os = "linux")]
 fn get_pidns(pid: u32) -> Result<String> {
     std::fs::read_link(format!("/proc/{}/ns/pid", pid))
         .c(crate::d!())
@@ -152,6 +153,12 @@ fn get_pidns(pid: u32) -> Result<String> {
         })
 }
 
+#[inline(always)]
+#[cfg(not(target_os = "linux"))]
+fn get_pidns(_pid: u32) -> Result<String> {
+    Ok("NULL".to_owned())
+}
+
 /// 生成日志内容
 pub fn genlog(mut e: Box<dyn MyError>) -> String {
     let pid = std::process::id();
@@ -159,7 +166,7 @@ pub fn genlog(mut e: Box<dyn MyError>) -> String {
     // 内部不能再调用`p`, 否则可能无限循环
     let ns = get_pidns(pid).unwrap();
 
-    let mut logn = LOG_LK.lock();
+    let mut logn = LOG_LK.lock().unwrap();
     let mut res = format!(
         "\n\x1b[31;01m{n:>0width$} [pidns: {ns}][pid: {pid}] {time}\x1b[00m",
         width = 6,
