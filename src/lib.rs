@@ -6,7 +6,7 @@ pub mod err;
 
 use err::*;
 use lazy_static::lazy_static;
-use parking_lot::Mutex;
+use std::sync::Mutex;
 
 lazy_static! {
     static ref LOG_LK: Mutex<u64> = Mutex::new(0);
@@ -166,7 +166,7 @@ pub fn genlog(mut e: Box<dyn MyError>) -> String {
     // 内部不能再调用`p`, 否则可能无限循环
     let ns = get_pidns(pid).unwrap();
 
-    let mut logn = LOG_LK.lock();
+    let mut logn = LOG_LK.lock().unwrap();
     let mut res = format!(
         "\n\x1b[31;01m{n:>0width$} [pidns: {ns}][pid: {pid}] {time}\x1b[00m",
         width = 6,
