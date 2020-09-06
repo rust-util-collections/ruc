@@ -9,6 +9,9 @@ lint:
 release:
 	cargo build --release
 
+test:
+	cargo test -- --nocapture --test-threads=1
+
 fmt:
 	@ cargo fmt
 

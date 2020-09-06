@@ -7,18 +7,36 @@ A simple and friendly `error-chain`.
 ```rust
 use myutil::{err::*, *};
 
-fn dog() -> Result<()> {}
-fn pig() -> Result<()> {}
-fn monkey() -> Result<()> {}
+fn will_panic() {
+    let l1 = || -> Result<()> { Err(eg!("Some error occur!")) };
 
-fn main() {
-    let res = dog().c(d!())
-                 .and_then(|_| pig().c(d!()) )
-                 .and_then(|_| monkey().c(d!()) );
-    pnk!(res);
+    let l2 = || -> Result<()> { l1().c(d!()) };
+
+    let l3 = || -> Result<()> { l2().c(d!()) };
+
+    let l4 = || -> Result<()> { l3().c(d!()) };
+
+    pnk!(l4());
 }
 ```
 
-# Sample
+# OutPut Sample
 
-![myutil-error-chain](./sample.png)
+```shell
+000000 [pidns: NULL][pid: 46574] 2020-09-06 18:18:32
+Error:
+├── file: src/lib.rs
+└── line: 318
+Caused By:
+├── file: src/lib.rs
+└── line: 316
+    Caused By:
+    ├── file: src/lib.rs
+    └── line: 314
+        Caused By:
+        ├── file: src/lib.rs
+        └── line: 312
+            Caused By: Some error occur!
+            ├── file: src/lib.rs
+            └── line: 310
+```

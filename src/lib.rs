@@ -303,4 +303,18 @@ mod tests {
         let ns_name = pnk!(get_pidns(process::id()));
         assert!(1 < ns_name.len());
     }
+
+    #[test]
+    #[should_panic]
+    fn T_display_style() {
+        let l1 = || -> Result<()> { Err(eg!("Some error occur!")) };
+
+        let l2 = || -> Result<()> { l1().c(d!()) };
+
+        let l3 = || -> Result<()> { l2().c(d!()) };
+
+        let l4 = || -> Result<()> { l3().c(d!()) };
+
+        pnk!(l4());
+    }
 }
