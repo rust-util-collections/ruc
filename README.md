@@ -7,14 +7,14 @@ A simple and friendly `error-chain`.
 ```rust
 use myutil::{err::*, *};
 
-fn a() -> Result<()> {}
-fn b() -> Result<()> {}
-fn b() -> Result<()> {}
+fn dog() -> Result<()> {}
+fn pig() -> Result<()> {}
+fn monkey() -> Result<()> {}
 
 fn main() {
-    let res = a().c(d!())
-                 .and_then(|_| b().c(d!()) )
-                 .and_then(|_| c().c(d!()) );
+    let res = dog().c(d!())
+                 .and_then(|_| pig().c(d!()) )
+                 .and_then(|_| monkey().c(d!()) );
     pnk!(res);
 }
 ```
