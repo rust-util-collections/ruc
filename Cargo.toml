@@ -5,6 +5,8 @@ authors = ["范辉 <hui.fan@mail.ru>"]
 edition = "2018"
 description = "A simple and friendly `error-chain`."
 keywords = ["error", "error-chain"]
+repository = "https://gitee.com/kt10/myutil.git"
+license = "MIT"
 
 
 [dependencies]
