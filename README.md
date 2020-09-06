@@ -8,12 +8,9 @@ A simple and friendly `error-chain`.
 use myutil::{err::*, *};
 
 fn will_panic() {
-    let l1 = || -> Result<()> { Err(eg!("Some error occur!")) };
-
+    let l1 = || -> Result<()> { Err(eg!("error!")) };
     let l2 = || -> Result<()> { l1().c(d!()) };
-
     let l3 = || -> Result<()> { l2().c(d!()) };
-
     let l4 = || -> Result<()> { l3().c(d!()) };
 
     pnk!(l4());
