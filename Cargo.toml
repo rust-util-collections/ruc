@@ -1,10 +1,11 @@
 [package]
 name = "myutil"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["范辉 <hui.fan@mail.ru>"]
 edition = "2018"
 description = "A simple and friendly `error-chain`."
 keywords = ["error", "error-chain"]
+categories = ["development-tools::debugging"]
 license = "MIT"
 homepage = "https://gitee.com/kt10/myutil"
 repository = "https://gitee.com/kt10/myutil.git"
