@@ -1,8 +1,15 @@
 [package]
 name = "myutil"
-version = "0.1.0"
+version = "0.2.6"
 authors = ["范辉 <hui.fan@mail.ru>"]
 edition = "2018"
+description = "A simple and friendly `error-chain`."
+keywords = ["error", "error-chain"]
+categories = ["development-tools::debugging"]
+license = "MIT"
+homepage = "https://gitee.com/kt10/myutil"
+repository = "https://gitee.com/kt10/myutil.git"
+
 
 [dependencies]
 lazy_static = "1"
