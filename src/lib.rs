@@ -232,9 +232,12 @@ macro_rules! eg {
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
             as Box<dyn MyError>
     }};
-    () => {{
+    (@$msg: expr) => {
+        $crate::eg!(format!("{:#?}", $msg))
+    };
+    () => {
         $crate::eg!("...")
-    }};
+    };
 }
 
 /// test assert
