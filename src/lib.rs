@@ -131,13 +131,17 @@ macro_rules! ts {
 #[macro_export]
 macro_rules! datetime_local {
     ($ts: expr) => {{
-        time::OffsetDateTime::from_unix_timestamp($ts as i64)
-            .to_offset(time::offset!(+8))
-            .format("%F %T")
+        get_datetime_local($ts as i64)
     }};
     () => {{
         datetime_local!($crate::ts!())
     }};
+}
+
+fn get_datetime_local(ts: i64) -> String {
+    time::OffsetDateTime::from_unix_timestamp(ts)
+        .to_offset(time::offset!(+8))
+        .format("%F %T")
 }
 
 #[inline(always)]
