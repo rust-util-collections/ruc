@@ -131,14 +131,14 @@ macro_rules! ts {
 #[macro_export]
 macro_rules! datetime_local {
     ($ts: expr) => {{
-        get_datetime_local($ts as i64)
+        crate::gen_datetime_local($ts as i64)
     }};
     () => {{
         datetime_local!($crate::ts!())
     }};
 }
 
-fn get_datetime_local(ts: i64) -> String {
+pub fn gen_datetime_local(ts: i64) -> String {
     time::OffsetDateTime::from_unix_timestamp(ts)
         .to_offset(time::offset!(+8))
         .format("%F %T")
