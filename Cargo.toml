@@ -1,6 +1,6 @@
 [package]
 name = "myutil"
-version = "0.2.7"
+version = "0.2.8"
 authors = ["范辉 <hui.fan@mail.ru>"]
 edition = "2018"
 description = "A simple and friendly `error-chain`."
