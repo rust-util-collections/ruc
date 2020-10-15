@@ -1,5 +1,7 @@
 //!
-//! # All errors will be converted to MyError.
+//! #  MyError
+//!
+//! All errors will be converted to MyError.
 //!
 use std::{
     error::Error,
