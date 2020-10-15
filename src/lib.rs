@@ -1,5 +1,7 @@
 //!
-//! # 通用工具集
+//! # MyUtil
+//!
+//! A useful util-collections for Rust.
 //!
 
 pub mod err;
@@ -12,17 +14,28 @@ lazy_static! {
     static ref LOG_LK: Mutex<u64> = Mutex::new(0);
 }
 
-/// hashmap operations
+/// map operations
 #[macro_export]
 macro_rules! map {
     () => {{
         std::collections::HashMap::new()
     }};
+    (B) => {{
+        std::collections::BTreeMap::new()
+    }};
     ($(||)+) => {{
         std::collections::HashMap::new
     }};
+    (B $(||)+) => {{
+        std::collections::BTreeMap::new
+    }};
     ($($k: expr => $v: expr),+ $(,)*) => {{
         let mut m = std::collections::HashMap::with_capacity([$(&$k),*].len());
+        $(m.insert($k, $v);)*
+        m
+    }};
+    (B $($k: expr => $v: expr),+ $(,)*) => {{
+        let mut m = map! {B};
         $(m.insert($k, $v);)*
         m
     }};
@@ -45,7 +58,7 @@ macro_rules! vct {
     }};
 }
 
-/// 高阶函数中提搞可读性.
+/// optimize readable in high-level-functions
 #[macro_export]
 macro_rules! alt {
     ($condition: expr, $ops: block, $ops2: block) => {{
@@ -62,7 +75,7 @@ macro_rules! alt {
     }};
 }
 
-/// 用于非关键环节打印提示性信息.
+/// print infomation only
 #[macro_export]
 macro_rules! info {
     ($ops: expr) => {{
@@ -73,7 +86,7 @@ macro_rules! info {
     }};
 }
 
-/// 完全忽略返回值
+/// omit the result without printing any message
 #[macro_export]
 macro_rules! omit {
     ($ops: expr) => {{
@@ -81,7 +94,7 @@ macro_rules! omit {
     }};
 }
 
-/// 打印消息后直接丢弃返回值
+/// drop the result afeter printing the message
 #[macro_export]
 macro_rules! info_omit {
     ($ops: expr) => {{
@@ -92,7 +105,7 @@ macro_rules! info_omit {
     }};
 }
 
-/// 打印模块路径, 文件名称, 行号等 Debug 信息
+/// print debug-info, eg: modular and file path, line number ...
 #[macro_export]
 macro_rules! d {
     ($x: expr) => {{
@@ -108,7 +121,7 @@ macro_rules! d {
     }};
 }
 
-/// 打印平面信息
+/// print msg those impl `fmt::Display`
 #[macro_export]
 macro_rules! pd {
     ($x: expr) => {{
@@ -127,7 +140,7 @@ macro_rules! ts {
     }};
 }
 
-/// get current native-local-datatime
+/// get current native-local-datatime(+8)
 #[macro_export]
 macro_rules! datetime_local {
     ($ts: expr) => {{
@@ -163,7 +176,7 @@ fn get_pidns(_pid: u32) -> Result<String> {
     Ok("NULL".to_owned())
 }
 
-/// 生成日志内容
+/// generate the log string
 pub fn genlog(mut e: Box<dyn MyError>) -> String {
     let pid = std::process::id();
 
@@ -203,14 +216,14 @@ macro_rules! die {
     };
 }
 
-/// 打印 error_chain 之后 Panic
+/// panic after printing `error_chain`
 #[inline(always)]
 pub fn pdie(e: Box<dyn MyError>) -> ! {
     p(e);
     crate::die!();
 }
 
-/// 打印错误信息并 Panic
+/// print log, and panic
 #[macro_export]
 macro_rules! pnk {
     ($ops: expr) => {{
@@ -221,7 +234,7 @@ macro_rules! pnk {
     }};
 }
 
-/// sleep
+/// sleep in milliseconds
 #[macro_export]
 macro_rules! sleep_ms {
     ($n: expr) => {{
@@ -244,7 +257,7 @@ macro_rules! eg {
     };
 }
 
-/// test assert
+/// test assert in `MyUtil` style
 #[macro_export]
 macro_rules! so_eq {
     ($lv: expr, $rv: expr) => {{
@@ -259,7 +272,7 @@ macro_rules! so_eq {
     }};
 }
 
-/// test assert
+/// test assert in `MyUtil` style
 #[macro_export]
 macro_rules! so_ne {
     ($lv: expr, $rv: expr) => {{
@@ -274,7 +287,7 @@ macro_rules! so_ne {
     }};
 }
 
-/// test assert
+/// test assert in `MyUtil` style
 #[macro_export]
 macro_rules! so_le {
     ($lv: expr, $rv: expr) => {{
@@ -289,7 +302,7 @@ macro_rules! so_le {
     }};
 }
 
-/// ok
+/// an `ok` wrapper
 #[macro_export]
 macro_rules! ok {
     () => {{
@@ -323,5 +336,16 @@ mod tests {
         let l4 = || -> Result<()> { l3().c(d!()) };
 
         pnk!(l4());
+    }
+
+    #[test]
+    fn T_map() {
+        let s1 = map! {1 => 2, 2 => 4};
+        let s2 = map! {B 1 => 2, 2 => 4};
+        assert_eq!(s1.len(), s2.len());
+        for (idx, (k, v)) in s2.into_iter().enumerate() {
+            assert_eq!(1 + idx, k);
+            assert_eq!(2 * k, v);
+        }
     }
 }
