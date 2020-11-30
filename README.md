@@ -1,4 +1,4 @@
-# myutil
+# MyUtil
 
 A simple and friendly `error-chain`, with many useful utils as an addition.
 
