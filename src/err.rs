@@ -8,6 +8,8 @@ use std::{
     fmt::{Debug, Display},
 };
 
+pub type ErrNo = i32;
+
 pub type Result<T> = std::result::Result<T, Box<dyn MyError>>;
 
 pub trait MyError: Display + Debug + Send {
@@ -36,48 +38,47 @@ pub trait MyError: Display + Debug + Send {
 }
 
 pub trait MyResult<T> {
-    fn c(self, msg: impl Display) -> Result<T>;
-    fn cd(self, msg: impl Debug) -> Result<T>
-    where
-        Self: Sized,
-    {
-        self.c(format!("{:?}", msg))
-    }
+    fn c(self, msg: SimpleMsg) -> Result<T>;
 }
 
 impl<T> MyResult<T> for Result<T> {
-    fn c(self, msg: impl Display) -> Result<T> {
+    #[inline(always)]
+    fn c(self, msg: SimpleMsg) -> Result<T> {
         self.map_err(|e| SimpleError::new(msg, Some(e)).into())
     }
 }
 
 impl<T> MyResult<T> for Option<T> {
-    fn c(self, msg: impl Display) -> Result<T> {
+    #[inline(always)]
+    fn c(self, msg: SimpleMsg) -> Result<T> {
         self.ok_or_else(|| SimpleError::new(msg, None).into())
     }
 }
 
 impl<T, E: Error> MyResult<T> for std::result::Result<T, E> {
-    fn c(self, msg: impl Display) -> Result<T> {
+    #[inline(always)]
+    fn c(self, msg: SimpleMsg) -> Result<T> {
         self.map_err(|e| {
-            SimpleError::new(msg, Some(Box::new(SimpleError::new(e, None))))
-                .into()
+            let inner = SimpleMsg::new(&msg.file, msg.line, e.to_string());
+            SimpleError::new(
+                msg,
+                Some(Box::new(SimpleError::new(inner, None))),
+            )
+            .into()
         })
     }
 }
 
 #[derive(Debug)]
 pub struct SimpleError {
-    msg: String,
+    msg: SimpleMsg,
     cause: Option<Box<dyn MyError>>,
 }
 
 impl SimpleError {
-    pub fn new(msg: impl Display, cause: Option<Box<dyn MyError>>) -> Self {
-        SimpleError {
-            msg: msg.to_string(),
-            cause,
-        }
+    #[inline(always)]
+    pub fn new(msg: SimpleMsg, cause: Option<Box<dyn MyError>>) -> Self {
+        SimpleError { msg, cause }
     }
 }
 
@@ -94,8 +95,40 @@ impl Into<Box<dyn MyError>> for SimpleError {
 }
 
 impl MyError for SimpleError {
+    #[inline(always)]
     fn cause(&mut self) -> Option<Box<dyn MyError>> {
         self.cause.take()
+    }
+}
+
+#[derive(Debug)]
+pub struct SimpleMsg {
+    pub eno: ErrNo,
+    pub file: String,
+    pub line: u32,
+    pub info: String,
+}
+
+impl SimpleMsg {
+    pub fn new(file: &str, line: u32, info: String) -> Self {
+        Self::newx(-1, file, line, info)
+    }
+
+    pub fn newx(eno: ErrNo, file: &str, line: u32, info: String) -> Self {
+        SimpleMsg {
+            eno,
+            file: file.to_owned(),
+            line,
+            info,
+        }
+    }
+}
+
+impl Display for SimpleMsg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,
+               "\x1b[01m{}\x1b[00m\n├── \x1b[01meno:\x1b[00m {}\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
+               self.info, self.eno, self.file, self.line)
     }
 }
 
@@ -105,10 +138,18 @@ mod test {
 
     #[test]
     fn test() {
-        let res: Result<i32> = Err(SimpleError::new("***", None).into());
+        let res: Result<i32> = Err(SimpleError::new(
+            SimpleMsg::new("/tmp/xx.rs", 9, "***".to_owned()),
+            None,
+        )
+        .into());
         println!(
             "{}",
-            res.c("dog").c("cat").c("pig").unwrap_err().display_chain()
+            res.c(SimpleMsg::new("/tmp/xx.rs", 1, "cat".to_owned()))
+                .c(SimpleMsg::new("/tmp/xx.rs", 2, "dog".to_owned()))
+                .c(SimpleMsg::new("/tmp/xx.rs", 3, "pig".to_owned()))
+                .unwrap_err()
+                .display_chain()
         );
     }
 }

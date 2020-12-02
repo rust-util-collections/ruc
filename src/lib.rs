@@ -108,16 +108,14 @@ macro_rules! info_omit {
 /// print debug-info, eg: modular and file path, line number ...
 #[macro_export]
 macro_rules! d {
-    ($x: expr) => {{
-        let mut res = "\x1b[31m".to_string();
-        res.push_str(&$x.to_string());
-        res.push_str("\x1b[00m");
-        res.push_str(&d!());
-        res
+    ($eno: expr, $info: expr) => {{
+        SimpleMsg::newx($eno, file!(), line!(), $info.to_string())
+    }};
+    ($info: expr) => {{
+        SimpleMsg::new(file!(), line!(), $info.to_string())
     }};
     () => {{
-        format!("\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
-                file!(), line!())
+        $crate::d!("")
     }};
 }
 
@@ -313,20 +311,18 @@ macro_rules! ok {
 
 #[cfg(test)]
 mod tests {
-    #![allow(non_snake_case)]
-
     use super::*;
     use std::process;
 
     #[test]
-    fn T_get_pidns() {
+    fn t_get_pidns() {
         let ns_name = pnk!(get_pidns(process::id()));
         assert!(1 < ns_name.len());
     }
 
     #[test]
     #[should_panic]
-    fn T_display_style() {
+    fn t_display_style() {
         let l1 = || -> Result<()> { Err(eg!("Some error occur!")) };
 
         let l2 = || -> Result<()> { l1().c(d!()) };
@@ -339,7 +335,7 @@ mod tests {
     }
 
     #[test]
-    fn T_map() {
+    fn t_map() {
         let s1 = map! {1 => 2, 2 => 4};
         let s2 = map! {B 1 => 2, 2 => 4};
         assert_eq!(s1.len(), s2.len());
