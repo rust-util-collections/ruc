@@ -110,10 +110,14 @@ pub struct SimpleMsg {
 }
 
 impl SimpleMsg {
+    /// 默认错误码 -1 (Unix 风格)
+    #[inline(always)]
     pub fn new(file: &str, line: u32, info: String) -> Self {
         Self::newx(-1, file, line, info)
     }
 
+    /// 自定义错误码
+    #[inline(always)]
     pub fn newx(eno: ErrNo, file: &str, line: u32, info: String) -> Self {
         SimpleMsg {
             eno,

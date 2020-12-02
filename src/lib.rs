@@ -111,6 +111,9 @@ macro_rules! d {
     ($eno: expr, $info: expr) => {{
         SimpleMsg::newx($eno, file!(), line!(), $info.to_string())
     }};
+    (@$eno: expr) => {{
+        $crate::d!($eno, "")
+    }};
     ($info: expr) => {{
         SimpleMsg::new(file!(), line!(), $info.to_string())
     }};
@@ -243,6 +246,10 @@ macro_rules! sleep_ms {
 /// Generate error with debug info
 #[macro_export]
 macro_rules! eg {
+    ($eno: expr, $msg: expr) => {{
+        Box::new($crate::err::SimpleError::new($crate::d!($eno, $msg), None))
+            as Box<dyn MyError>
+    }};
     ($msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
             as Box<dyn MyError>
@@ -323,13 +330,10 @@ mod tests {
     #[test]
     #[should_panic]
     fn t_display_style() {
-        let l1 = || -> Result<()> { Err(eg!("Some error occur!")) };
-
-        let l2 = || -> Result<()> { l1().c(d!()) };
-
-        let l3 = || -> Result<()> { l2().c(d!()) };
-
-        let l4 = || -> Result<()> { l3().c(d!()) };
+        let l1 = || -> Result<()> { Err(eg!(-9, "The final error message!")) };
+        let l2 = || -> Result<()> { l1().c(d!(@-10)) };
+        let l3 = || -> Result<()> { l2().c(d!(-11, "A custom message!")) };
+        let l4 = || -> Result<()> { l3().c(d!(@-12)) };
 
         pnk!(l4());
     }
