@@ -24,25 +24,30 @@ fn will_panic() {
 # OutPut Sample
 
 ```shell
-000000 [pidns: NULL][pid: 82456] 2020-12-02 16:52:33
+000000 [pidns: 4026531836][pid: 64518] 2020-12-29 10:52:52
 Error:
 ├── eno: -1
 ├── file: src/lib.rs
-└── line: 338
+├── line: 342
+└── column: 9
 Caused By:
 ├── eno: -12
 ├── file: src/lib.rs
-└── line: 336
+├── line: 340
+└── column: 44
     Caused By: A custom message!
     ├── eno: -11
     ├── file: src/lib.rs
-    └── line: 335
+    ├── line: 339
+    └── column: 44
         Caused By:
         ├── eno: -10
         ├── file: src/lib.rs
-        └── line: 334
+        ├── line: 338
+        └── column: 44
             Caused By: The final error message!
             ├── eno: -9
             ├── file: src/lib.rs
-            └── line: 333
+            ├── line: 337
+            └── column: 41
 ```

@@ -11,5 +11,5 @@ homepage = "https://gitee.com/kt10/myutil"
 repository = "https://gitee.com/kt10/myutil.git"
 
 [dependencies]
-lazy_static = "1"
-time = "0.2"
+lazy_static = "1.4.0"
+time = "0.2.23"

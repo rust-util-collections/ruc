@@ -4,6 +4,9 @@
 //! A useful util-collections for Rust.
 //!
 
+#![deny(warnings)]
+#![warn(missing_docs, unused_import_braces, unused_extern_crates)]
+
 pub mod err;
 
 use err::*;
@@ -109,13 +112,13 @@ macro_rules! info_omit {
 #[macro_export]
 macro_rules! d {
     ($eno: expr, $info: expr) => {{
-        SimpleMsg::newx($eno, file!(), line!(), $info.to_string())
+        SimpleMsg::newx($eno, file!(), line!(), column!(), $info.to_string())
     }};
     (@$eno: expr) => {{
         $crate::d!($eno, "")
     }};
     ($info: expr) => {{
-        SimpleMsg::new(file!(), line!(), $info.to_string())
+        SimpleMsg::new(file!(), line!(), column!(), $info.to_string())
     }};
     () => {{
         $crate::d!("")
@@ -152,6 +155,7 @@ macro_rules! datetime_local {
     }};
 }
 
+/// generate a 'formated +8 datetime'
 pub fn gen_datetime_local(ts: i64) -> String {
     time::OffsetDateTime::from_unix_timestamp(ts)
         .to_offset(time::offset!(+8))
