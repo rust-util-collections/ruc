@@ -4,6 +4,12 @@ A simple and friendly `error-chain`, with many useful utils as an addition.
 
 The painful experience of using `error-chain` gave birth to this project. It can adapt to almost all scenes without any special implementation.
 
+## Documents
+
+```shell
+make doc
+```
+
 ## Usage
 
 > **Tips**: you can easily implement your own `Error` type.
@@ -68,10 +74,4 @@ Caused By:
                         ├── file: src/lib.rs
                         ├── line: 337
                         └── column: 41
-```
-
-## Documents
-
-```shell
-make doc
 ```
