@@ -4,6 +4,9 @@
 //! A useful util-collections for Rust.
 //!
 
+#![deny(warnings)]
+#![warn(missing_docs, unused_import_braces, unused_extern_crates)]
+
 pub mod err;
 
 use err::*;
@@ -108,16 +111,17 @@ macro_rules! info_omit {
 /// print debug-info, eg: modular and file path, line number ...
 #[macro_export]
 macro_rules! d {
-    ($x: expr) => {{
-        let mut res = "\x1b[31m".to_string();
-        res.push_str(&$x.to_string());
-        res.push_str("\x1b[00m");
-        res.push_str(&d!());
-        res
+    ($eno: expr, $info: expr) => {{
+        SimpleMsg::newx($eno, file!(), line!(), column!(), $info.to_string())
+    }};
+    (@$eno: expr) => {{
+        $crate::d!($eno, "")
+    }};
+    ($info: expr) => {{
+        SimpleMsg::new(file!(), line!(), column!(), $info.to_string())
     }};
     () => {{
-        format!("\n├── \x1b[01mfile:\x1b[00m {}\n└── \x1b[01mline:\x1b[00m {}",
-                file!(), line!())
+        $crate::d!("")
     }};
 }
 
@@ -151,6 +155,7 @@ macro_rules! datetime_local {
     }};
 }
 
+/// generate a 'formated +8 datetime'
 pub fn gen_datetime_local(ts: i64) -> String {
     time::OffsetDateTime::from_unix_timestamp(ts)
         .to_offset(time::offset!(+8))
@@ -245,6 +250,10 @@ macro_rules! sleep_ms {
 /// Generate error with debug info
 #[macro_export]
 macro_rules! eg {
+    ($eno: expr, $msg: expr) => {{
+        Box::new($crate::err::SimpleError::new($crate::d!($eno, $msg), None))
+            as Box<dyn MyError>
+    }};
     ($msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
             as Box<dyn MyError>
@@ -313,33 +322,31 @@ macro_rules! ok {
 
 #[cfg(test)]
 mod tests {
-    #![allow(non_snake_case)]
-
     use super::*;
     use std::process;
 
     #[test]
-    fn T_get_pidns() {
+    fn t_get_pidns() {
         let ns_name = pnk!(get_pidns(process::id()));
         assert!(1 < ns_name.len());
     }
 
     #[test]
     #[should_panic]
-    fn T_display_style() {
-        let l1 = || -> Result<()> { Err(eg!("Some error occur!")) };
-
-        let l2 = || -> Result<()> { l1().c(d!()) };
-
-        let l3 = || -> Result<()> { l2().c(d!()) };
-
+    fn t_display_style() {
+        let l1 = || -> Result<()> { Err(eg!(-9, "The final error message!")) };
+        let l2 = || -> Result<()> { l1().c(d!(@-10)) };
+        let l3 = || -> Result<()> { l2().c(d!(-11, "A custom message!")) };
         let l4 = || -> Result<()> { l3().c(d!()) };
+        let l5 = || -> Result<()> { l4().c(d!()) };
+        let l6 = || -> Result<()> { l5().c(d!()) };
+        let l7 = || -> Result<()> { l6().c(d!(@-12)) };
 
-        pnk!(l4());
+        pnk!(l7());
     }
 
     #[test]
-    fn T_map() {
+    fn t_map() {
         let s1 = map! {1 => 2, 2 => 4};
         let s2 = map! {B 1 => 2, 2 => 4};
         assert_eq!(s1.len(), s2.len());
