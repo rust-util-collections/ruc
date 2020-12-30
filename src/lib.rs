@@ -337,9 +337,12 @@ mod tests {
         let l1 = || -> Result<()> { Err(eg!(-9, "The final error message!")) };
         let l2 = || -> Result<()> { l1().c(d!(@-10)) };
         let l3 = || -> Result<()> { l2().c(d!(-11, "A custom message!")) };
-        let l4 = || -> Result<()> { l3().c(d!(@-12)) };
+        let l4 = || -> Result<()> { l3().c(d!()) };
+        let l5 = || -> Result<()> { l4().c(d!()) };
+        let l6 = || -> Result<()> { l5().c(d!()) };
+        let l7 = || -> Result<()> { l6().c(d!(@-12)) };
 
-        pnk!(l4());
+        pnk!(l7());
     }
 
     #[test]

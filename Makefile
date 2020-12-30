@@ -15,5 +15,8 @@ test:
 fmt:
 	@ cargo fmt
 
+doc:
+	cargo doc --open
+
 clean:
 	@ cargo clean
