@@ -153,6 +153,14 @@ impl SimpleMsg {
 }
 
 impl Display for SimpleMsg {
+    #[cfg(feature = "ansi")]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,
+               "\x1b[01m{}\x1b[00m\n|-- \x1b[01meno:\x1b[00m {}\n|-- \x1b[01mfile:\x1b[00m {}\n|-- \x1b[01mline:\x1b[00m {}\n`-- \x1b[01mcolumn:\x1b[00m {}",
+               self.info, self.eno, self.file, self.line, self.column)
+    }
+
+    #[cfg(not(feature = "ansi"))]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f,
                "\x1b[01m{}\x1b[00m\n├── \x1b[01meno:\x1b[00m {}\n├── \x1b[01mfile:\x1b[00m {}\n├── \x1b[01mline:\x1b[00m {}\n└── \x1b[01mcolumn:\x1b[00m {}",

@@ -13,3 +13,7 @@ repository = "https://gitee.com/kt10/myutil.git"
 [dependencies]
 lazy_static = "1.4.0"
 time = "0.2.23"
+
+[features]
+ansi = []
+default = ["ansi"]

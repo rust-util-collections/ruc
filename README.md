@@ -32,46 +32,94 @@ fn will_panic() {
 
 ## OutPut Sample
 
-```shell
-000000 [pidns: 4026531836][pid: 2703] 2020-12-30 10:39:19
+#### nocolor (features = "ansi")
+
+```
+# 2021-01-05 11:51:16 [idx: 0] [pid: 14939] [pidns: 4026531836]
+Error:
+|-- eno: -1
+|-- file: src/lib.rs
+|-- line: 362
+`-- column: 9
+Caused By:
+|-- eno: -12
+|-- file: src/lib.rs
+|-- line: 360
+`-- column: 44
+    Caused By:
+    |-- eno: -1
+    |-- file: src/lib.rs
+    |-- line: 359
+    `-- column: 44
+        Caused By:
+        |-- eno: -1
+        |-- file: src/lib.rs
+        |-- line: 358
+        `-- column: 44
+            Caused By:
+            |-- eno: -1
+            |-- file: src/lib.rs
+            |-- line: 357
+            `-- column: 44
+                Caused By: A custom message!
+                |-- eno: -11
+                |-- file: src/lib.rs
+                |-- line: 356
+                `-- column: 44
+                    Caused By:
+                    |-- eno: -10
+                    |-- file: src/lib.rs
+                    |-- line: 355
+                    `-- column: 44
+                        Caused By: The final error message!
+                        |-- eno: -9
+                        |-- file: src/lib.rs
+                        |-- line: 354
+                        `-- column: 41
+```
+
+#### colorful
+
+```
+# 2021-01-05 11:51:16 [idx: 0] [pid: 15182] [pidns: 4026531836]
 Error:
 ├── eno: -1
 ├── file: src/lib.rs
-├── line: 345
+├── line: 362
 └── column: 9
 Caused By:
 ├── eno: -12
 ├── file: src/lib.rs
-├── line: 343
+├── line: 360
 └── column: 44
     Caused By:
     ├── eno: -1
     ├── file: src/lib.rs
-    ├── line: 342
+    ├── line: 359
     └── column: 44
         Caused By:
         ├── eno: -1
         ├── file: src/lib.rs
-        ├── line: 341
+        ├── line: 358
         └── column: 44
             Caused By:
             ├── eno: -1
             ├── file: src/lib.rs
-            ├── line: 340
+            ├── line: 357
             └── column: 44
                 Caused By: A custom message!
                 ├── eno: -11
                 ├── file: src/lib.rs
-                ├── line: 339
+                ├── line: 356
                 └── column: 44
                     Caused By:
                     ├── eno: -10
                     ├── file: src/lib.rs
-                    ├── line: 338
+                    ├── line: 355
                     └── column: 44
                         Caused By: The final error message!
                         ├── eno: -9
                         ├── file: src/lib.rs
-                        ├── line: 337
+                        ├── line: 354
                         └── column: 41
 ```

@@ -189,18 +189,35 @@ pub fn genlog(mut e: Box<dyn MyError>) -> String {
     let ns = get_pidns(pid).unwrap();
 
     let mut logn = LOG_LK.lock().unwrap();
-    let mut res = format!(
-        "\n\x1b[31;01m{n:>0width$} [pidns: {ns}][pid: {pid}] {time}\x1b[00m",
-        width = 6,
-        n = logn,
-        ns = ns,
-        pid = pid,
-        time = datetime_local!(),
-    );
+    let mut res = genlog_fmt(*logn, ns, pid);
     res.push_str(&e.display_chain());
     *logn += 1;
 
     res
+}
+
+#[cfg(not(feature = "ansi"))]
+#[inline(always)]
+fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
+    format!(
+        "\n\x1b[31;01m# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]\x1b[00m",
+        time = datetime_local!(),
+        n = idx,
+        pid = pid,
+        ns = ns,
+    )
+}
+
+#[cfg(feature = "ansi")]
+#[inline(always)]
+fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
+    format!(
+        "\n# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]",
+        time = datetime_local!(),
+        n = idx,
+        pid = pid,
+        ns = ns,
+    )
 }
 
 /// print log
