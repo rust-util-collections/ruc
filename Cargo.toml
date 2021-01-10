@@ -1,14 +1,14 @@
 [package]
-name = "myutil"
-version = "0.3.0"
-authors = ["范辉 <hui.fan@mail.ru>"]
+name = "ruc"
+version = "0.4.0"
+authors = ["FanHui <fanhui.x@gmail.com>"]
 edition = "2018"
-description = "A simple and friendly `error-chain`."
+description = "Rust Util Collection, include a friendly `error-chain` and many other utils."
 keywords = ["error", "error-chain"]
 categories = ["development-tools::debugging"]
 license = "MIT"
-homepage = "https://gitee.com/kt10/myutil"
-repository = "https://gitee.com/kt10/myutil.git"
+homepage = "https://gitee.com/kt10/ruc"
+repository = "https://gitee.com/kt10/ruc.git"
 
 [dependencies]
 lazy_static = "1.4.0"
