@@ -1,6 +1,6 @@
-# MyUtil
+# RUC
 
-A simple and friendly `error-chain`, with many useful utils as an addition.
+Rust Util Collection, a simple and friendly `error-chain`, with many useful utils as an addition.
 
 The painful experience of using `error-chain` gave birth to this project. It can adapt to almost all scenes without any special implementation.
 
