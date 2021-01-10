@@ -125,6 +125,14 @@ macro_rules! d {
     }};
 }
 
+/// print debug-info, eg: modular and file path, line number ...
+#[macro_export]
+macro_rules! e {
+    ($eno: expr) => {{
+        $crate::d!($eno, stringify!($eno))
+    }};
+}
+
 /// print msg those impl `fmt::Display`
 #[macro_export]
 macro_rules! pd {
@@ -342,6 +350,8 @@ mod tests {
     use super::*;
     use std::process;
 
+    const ERR_UNKNOWN: i32 = -100;
+
     #[test]
     fn t_get_pidns() {
         let ns_name = pnk!(get_pidns(process::id()));
@@ -352,14 +362,12 @@ mod tests {
     #[should_panic]
     fn t_display_style() {
         let l1 = || -> Result<()> { Err(eg!(-9, "The final error message!")) };
-        let l2 = || -> Result<()> { l1().c(d!(@-10)) };
+        let l2 = || -> Result<()> { l1().c(d!()) };
         let l3 = || -> Result<()> { l2().c(d!(-11, "A custom message!")) };
-        let l4 = || -> Result<()> { l3().c(d!()) };
-        let l5 = || -> Result<()> { l4().c(d!()) };
-        let l6 = || -> Result<()> { l5().c(d!()) };
-        let l7 = || -> Result<()> { l6().c(d!(@-12)) };
+        let l4 = || -> Result<()> { l3().c(e!(ERR_UNKNOWN)) };
+        let l5 = || -> Result<()> { l4().c(d!(@-12)) };
 
-        pnk!(l7());
+        pnk!(l5());
     }
 
     #[test]
