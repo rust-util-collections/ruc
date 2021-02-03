@@ -168,6 +168,12 @@ impl Display for SimpleMsg {
     }
 }
 
+impl From<SimpleMsg> for Box<dyn MyError> {
+    fn from(m: SimpleMsg) -> Self {
+        SimpleError::new(m, None).into()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
