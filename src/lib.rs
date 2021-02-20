@@ -1,5 +1,5 @@
 //!
-//! # MyUtil
+//! # RUC
 //!
 //! A useful util-collections for Rust.
 //!
@@ -190,7 +190,7 @@ fn get_pidns(_pid: u32) -> Result<String> {
 }
 
 /// generate the log string
-pub fn genlog(mut e: Box<dyn MyError>) -> String {
+pub fn genlog(mut e: Box<dyn RucError>) -> String {
     let pid = std::process::id();
 
     // 内部不能再调用`p`, 否则可能无限循环
@@ -230,7 +230,7 @@ fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
 
 /// print log
 #[inline(always)]
-pub fn p(e: Box<dyn MyError>) {
+pub fn p(e: Box<dyn RucError>) {
     eprintln!("{}", genlog(e));
 }
 
@@ -248,7 +248,7 @@ macro_rules! die {
 
 /// panic after printing `error_chain`
 #[inline(always)]
-pub fn pdie(e: Box<dyn MyError>) -> ! {
+pub fn pdie(e: Box<dyn RucError>) -> ! {
     p(e);
     crate::die!();
 }
@@ -277,11 +277,11 @@ macro_rules! sleep_ms {
 macro_rules! eg {
     ($eno: expr, $msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($eno, $msg), None))
-            as Box<dyn MyError>
+            as Box<dyn RucError>
     }};
     ($msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
-            as Box<dyn MyError>
+            as Box<dyn RucError>
     }};
     (@$msg: expr) => {
         $crate::eg!(format!("{:#?}", $msg))

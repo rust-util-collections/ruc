@@ -1,7 +1,7 @@
 //!
-//! #  MyError
+//! #  RucError
 //!
-//! All errors will be converted to MyError.
+//! All errors will be converted to RucError.
 //!
 use std::{
     error::Error,
@@ -12,12 +12,12 @@ use std::{
 pub type ErrNo = i32;
 
 /// Custom Result
-pub type Result<T> = std::result::Result<T, Box<dyn MyError>>;
+pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
 
 /// the major trait defination
-pub trait MyError: Display + Debug + Send {
+pub trait RucError: Display + Debug + Send {
     /// point to a error which caused current error
-    fn cause(&mut self) -> Option<Box<dyn MyError>> {
+    fn cause(&mut self) -> Option<Box<dyn RucError>> {
         None
     }
 
@@ -43,26 +43,26 @@ pub trait MyError: Display + Debug + Send {
 }
 
 /// convert all to this
-pub trait MyResult<T> {
+pub trait RucResult<T> {
     /// alias for 'chain_error'
     fn c(self, msg: SimpleMsg) -> Result<T>;
 }
 
-impl<T> MyResult<T> for Result<T> {
+impl<T> RucResult<T> for Result<T> {
     #[inline(always)]
     fn c(self, msg: SimpleMsg) -> Result<T> {
         self.map_err(|e| SimpleError::new(msg, Some(e)).into())
     }
 }
 
-impl<T> MyResult<T> for Option<T> {
+impl<T> RucResult<T> for Option<T> {
     #[inline(always)]
     fn c(self, msg: SimpleMsg) -> Result<T> {
         self.ok_or_else(|| SimpleError::new(msg, None).into())
     }
 }
 
-impl<T, E: Error> MyResult<T> for std::result::Result<T, E> {
+impl<T, E: Error> RucResult<T> for std::result::Result<T, E> {
     #[inline(always)]
     fn c(self, msg: SimpleMsg) -> Result<T> {
         self.map_err(|e| {
@@ -81,13 +81,13 @@ impl<T, E: Error> MyResult<T> for std::result::Result<T, E> {
 #[derive(Debug)]
 pub struct SimpleError {
     msg: SimpleMsg,
-    cause: Option<Box<dyn MyError>>,
+    cause: Option<Box<dyn RucError>>,
 }
 
 impl SimpleError {
     /// new it
     #[inline(always)]
-    pub fn new(msg: SimpleMsg, cause: Option<Box<dyn MyError>>) -> Self {
+    pub fn new(msg: SimpleMsg, cause: Option<Box<dyn RucError>>) -> Self {
         SimpleError { msg, cause }
     }
 }
@@ -98,15 +98,15 @@ impl Display for SimpleError {
     }
 }
 
-impl Into<Box<dyn MyError>> for SimpleError {
-    fn into(self) -> Box<dyn MyError> {
+impl Into<Box<dyn RucError>> for SimpleError {
+    fn into(self) -> Box<dyn RucError> {
         Box::new(self)
     }
 }
 
-impl MyError for SimpleError {
+impl RucError for SimpleError {
     #[inline(always)]
-    fn cause(&mut self) -> Option<Box<dyn MyError>> {
+    fn cause(&mut self) -> Option<Box<dyn RucError>> {
         self.cause.take()
     }
 }
@@ -168,7 +168,7 @@ impl Display for SimpleMsg {
     }
 }
 
-impl From<SimpleMsg> for Box<dyn MyError> {
+impl From<SimpleMsg> for Box<dyn RucError> {
     fn from(m: SimpleMsg) -> Self {
         SimpleError::new(m, None).into()
     }
