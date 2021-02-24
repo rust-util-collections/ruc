@@ -11,6 +11,7 @@ release:
 
 test:
 	cargo test -- --nocapture --test-threads=1
+	cargo test --no-default-features=false -- --nocapture --test-threads=1
 
 fmt:
 	@ cargo fmt

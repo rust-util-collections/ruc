@@ -1,6 +1,6 @@
-# MyUtil
+# RUC
 
-A simple and friendly `error-chain`, with many useful utils as an addition.
+Rust Util Collection, a simple and friendly `error-chain`, with many useful utils as an addition.
 
 The painful experience of using `error-chain` gave birth to this project. It can adapt to almost all scenes without any special implementation.
 
@@ -17,61 +17,78 @@ make doc
 ```rust
 use myutil::{err::*, *};
 
-fn will_panic() {
-    let l1 = || -> Result<()> { Err(eg!(-9, "The final error message!")) };
-    let l2 = || -> Result<()> { l1().c(d!(@-10)) };
-    let l3 = || -> Result<()> { l2().c(d!(-11, "A custom message!")) };
-    let l4 = || -> Result<()> { l3().c(d!()) };
-    let l5 = || -> Result<()> { l4().c(d!()) };
-    let l6 = || -> Result<()> { l5().c(d!()) };
-    let l7 = || -> Result<()> { l6().c(d!(@-12)) };
+#[derive(Debug, Eq, PartialEq)]
+struct CustomErr(i32);
 
-    pnk!(l7());
+fn will_panic() {
+    let l1 = || -> Result<()> { Err(eg!("The final error message!")) };
+    let l2 = || -> Result<()> { l1().c(d!()) };
+    let l3 = || -> Result<()> { l2().c(d!("A custom message!")) };
+    let l4 = || -> Result<()> { l3().c(d!("ERR_UNKNOWN")) };
+    let l5 = || -> Result<()> { l4().c(d!(@CustomErr(-1))) };
+
+    pnk!(l5());
 }
 ```
 
 ## OutPut Sample
 
-```shell
-000000 [pidns: 4026531836][pid: 2703] 2020-12-30 10:39:19
+#### nocolor (features = "ansi")
+
+```
+# 2021-02-24 9:31:12 [idx: 0] [pid: 11843] [pidns: 4026531836]
 Error:
-├── eno: -1
+|-- file: src/lib.rs
+|-- line: 355
+`-- column: 9
+Caused By: CustomErr(-1)
+|-- file: src/lib.rs
+|-- line: 353
+`-- column: 44
+    Caused By: ERR_UNKNOWN
+    |-- file: src/lib.rs
+    |-- line: 352
+    `-- column: 44
+        Caused By: A custom message!
+        |-- file: src/lib.rs
+        |-- line: 351
+        `-- column: 44
+            Caused By:
+            |-- file: src/lib.rs
+            |-- line: 350
+            `-- column: 44
+                Caused By: The final error message!
+                |-- file: src/lib.rs
+                |-- line: 349
+                `-- column: 41
+```
+
+#### colorful
+
+```
+# 2021-02-24 9:31:13 [idx: 0] [pid: 12058] [pidns: 4026531836]
+Error:
 ├── file: src/lib.rs
-├── line: 345
+├── line: 355
 └── column: 9
-Caused By:
-├── eno: -12
+Caused By: CustomErr(-1)
 ├── file: src/lib.rs
-├── line: 343
+├── line: 353
 └── column: 44
-    Caused By:
-    ├── eno: -1
+    Caused By: ERR_UNKNOWN
     ├── file: src/lib.rs
-    ├── line: 342
+    ├── line: 352
     └── column: 44
-        Caused By:
-        ├── eno: -1
+        Caused By: A custom message!
         ├── file: src/lib.rs
-        ├── line: 341
+        ├── line: 351
         └── column: 44
             Caused By:
-            ├── eno: -1
             ├── file: src/lib.rs
-            ├── line: 340
+            ├── line: 350
             └── column: 44
-                Caused By: A custom message!
-                ├── eno: -11
+                Caused By: The final error message!
                 ├── file: src/lib.rs
-                ├── line: 339
-                └── column: 44
-                    Caused By:
-                    ├── eno: -10
-                    ├── file: src/lib.rs
-                    ├── line: 338
-                    └── column: 44
-                        Caused By: The final error message!
-                        ├── eno: -9
-                        ├── file: src/lib.rs
-                        ├── line: 337
-                        └── column: 41
+                ├── line: 349
+                └── column: 41
 ```

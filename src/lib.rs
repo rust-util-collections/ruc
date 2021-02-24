@@ -1,5 +1,5 @@
 //!
-//! # MyUtil
+//! # RUC
 //!
 //! A useful util-collections for Rust.
 //!
@@ -111,14 +111,11 @@ macro_rules! info_omit {
 /// print debug-info, eg: modular and file path, line number ...
 #[macro_export]
 macro_rules! d {
-    ($eno: expr, $info: expr) => {{
-        SimpleMsg::newx($eno, file!(), line!(), column!(), $info.to_string())
+    ($err: expr) => {{
+        SimpleMsg::new($err, file!(), line!(), column!())
     }};
-    (@$eno: expr) => {{
-        $crate::d!($eno, "")
-    }};
-    ($info: expr) => {{
-        SimpleMsg::new(file!(), line!(), column!(), $info.to_string())
+    (@$err: expr) => {{
+        $crate::d!(format!("{:?}", $err))
     }};
     () => {{
         $crate::d!("")
@@ -146,20 +143,19 @@ macro_rules! ts {
 
 /// get current native-local-datatime(+8)
 #[macro_export]
-macro_rules! datetime_local {
+macro_rules! datetime {
     ($ts: expr) => {{
-        crate::gen_datetime_local($ts as i64)
+        crate::gen_datetime($ts as i64)
     }};
     () => {{
-        datetime_local!($crate::ts!())
+        datetime!($crate::ts!())
     }};
 }
 
 /// generate a 'formated +8 datetime'
-pub fn gen_datetime_local(ts: i64) -> String {
-    time::OffsetDateTime::from_unix_timestamp(ts)
-        .to_offset(time::offset!(+8))
-        .format("%F %T")
+#[inline(always)]
+pub fn gen_datetime(ts: i64) -> String {
+    time::OffsetDateTime::from_unix_timestamp(ts).format("%F %T")
 }
 
 #[inline(always)]
@@ -182,30 +178,47 @@ fn get_pidns(_pid: u32) -> Result<String> {
 }
 
 /// generate the log string
-pub fn genlog(mut e: Box<dyn MyError>) -> String {
+pub fn genlog(mut e: Box<dyn RucError>) -> String {
     let pid = std::process::id();
 
     // 内部不能再调用`p`, 否则可能无限循环
     let ns = get_pidns(pid).unwrap();
 
     let mut logn = LOG_LK.lock().unwrap();
-    let mut res = format!(
-        "\n\x1b[31;01m{n:>0width$} [pidns: {ns}][pid: {pid}] {time}\x1b[00m",
-        width = 6,
-        n = logn,
-        ns = ns,
-        pid = pid,
-        time = datetime_local!(),
-    );
+    let mut res = genlog_fmt(*logn, ns, pid);
     res.push_str(&e.display_chain());
     *logn += 1;
 
     res
 }
 
+#[cfg(not(feature = "ansi"))]
+#[inline(always)]
+fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
+    format!(
+        "\n\x1b[31;01m# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]\x1b[00m",
+        time = datetime!(),
+        n = idx,
+        pid = pid,
+        ns = ns,
+    )
+}
+
+#[cfg(feature = "ansi")]
+#[inline(always)]
+fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
+    format!(
+        "\n# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]",
+        time = datetime!(),
+        n = idx,
+        pid = pid,
+        ns = ns,
+    )
+}
+
 /// print log
 #[inline(always)]
-pub fn p(e: Box<dyn MyError>) {
+pub fn p(e: Box<dyn RucError>) {
     eprintln!("{}", genlog(e));
 }
 
@@ -223,7 +236,7 @@ macro_rules! die {
 
 /// panic after printing `error_chain`
 #[inline(always)]
-pub fn pdie(e: Box<dyn MyError>) -> ! {
+pub fn pdie(e: Box<dyn RucError>) -> ! {
     p(e);
     crate::die!();
 }
@@ -250,13 +263,9 @@ macro_rules! sleep_ms {
 /// Generate error with debug info
 #[macro_export]
 macro_rules! eg {
-    ($eno: expr, $msg: expr) => {{
-        Box::new($crate::err::SimpleError::new($crate::d!($eno, $msg), None))
-            as Box<dyn MyError>
-    }};
     ($msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
-            as Box<dyn MyError>
+            as Box<dyn RucError>
     }};
     (@$msg: expr) => {
         $crate::eg!(format!("{:#?}", $msg))
@@ -334,15 +343,16 @@ mod tests {
     #[test]
     #[should_panic]
     fn t_display_style() {
-        let l1 = || -> Result<()> { Err(eg!(-9, "The final error message!")) };
-        let l2 = || -> Result<()> { l1().c(d!(@-10)) };
-        let l3 = || -> Result<()> { l2().c(d!(-11, "A custom message!")) };
-        let l4 = || -> Result<()> { l3().c(d!()) };
-        let l5 = || -> Result<()> { l4().c(d!()) };
-        let l6 = || -> Result<()> { l5().c(d!()) };
-        let l7 = || -> Result<()> { l6().c(d!(@-12)) };
+        #[derive(Debug, Eq, PartialEq)]
+        struct CustomErr(i32);
 
-        pnk!(l7());
+        let l1 = || -> Result<()> { Err(eg!("The final error message!")) };
+        let l2 = || -> Result<()> { l1().c(d!()) };
+        let l3 = || -> Result<()> { l2().c(d!("A custom message!")) };
+        let l4 = || -> Result<()> { l3().c(d!("ERR_UNKNOWN")) };
+        let l5 = || -> Result<()> { l4().c(d!(@CustomErr(-1))) };
+
+        pnk!(l5());
     }
 
     #[test]
