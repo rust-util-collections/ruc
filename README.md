@@ -17,14 +17,15 @@ make doc
 ```rust
 use myutil::{err::*, *};
 
-const ERR_UNKNOWN: i32 = -100;
+#[derive(Debug, Eq, PartialEq)]
+struct CustomErr(i32);
 
 fn will_panic() {
-    let l1 = || -> Result<()> { Err(eg!(-9, "The final error message!")) };
+    let l1 = || -> Result<()> { Err(eg!("The final error message!")) };
     let l2 = || -> Result<()> { l1().c(d!()) };
-    let l3 = || -> Result<()> { l2().c(d!(-11, "A custom message!")) };
-    let l4 = || -> Result<()> { l3().c(e!(ERR_UNKNOWN)) };
-    let l5 = || -> Result<()> { l4().c(d!(@-12)) };
+    let l3 = || -> Result<()> { l2().c(d!("A custom message!")) };
+    let l4 = || -> Result<()> { l3().c(d!("ERR_UNKNOWN")) };
+    let l5 = || -> Result<()> { l4().c(d!(@CustomErr(-1))) };
 
     pnk!(l5());
 }
@@ -35,71 +36,59 @@ fn will_panic() {
 #### nocolor (features = "ansi")
 
 ```
-# 2021-01-10 11:23:07 [idx: 0] [pid: 52827] [pidns: NULL]
+# 2021-02-24 9:31:12 [idx: 0] [pid: 11843] [pidns: 4026531836]
 Error:
-|-- eno: -1
 |-- file: src/lib.rs
-|-- line: 370
+|-- line: 355
 `-- column: 9
-Caused By:
-|-- eno: -12
+Caused By: CustomErr(-1)
 |-- file: src/lib.rs
-|-- line: 368
+|-- line: 353
 `-- column: 44
     Caused By: ERR_UNKNOWN
-    |-- eno: -100
     |-- file: src/lib.rs
-    |-- line: 367
+    |-- line: 352
     `-- column: 44
         Caused By: A custom message!
-        |-- eno: -11
         |-- file: src/lib.rs
-        |-- line: 366
+        |-- line: 351
         `-- column: 44
             Caused By:
-            |-- eno: -1
             |-- file: src/lib.rs
-            |-- line: 365
+            |-- line: 350
             `-- column: 44
                 Caused By: The final error message!
-                |-- eno: -9
                 |-- file: src/lib.rs
-                |-- line: 364
+                |-- line: 349
                 `-- column: 41
 ```
 
 #### colorful
 
 ```
-# 2021-01-10 11:25:14 [idx: 0] [pid: 52892] [pidns: NULL]
+# 2021-02-24 9:31:13 [idx: 0] [pid: 12058] [pidns: 4026531836]
 Error:
-├── eno: -1
 ├── file: src/lib.rs
-├── line: 370
+├── line: 355
 └── column: 9
-Caused By:
-├── eno: -12
+Caused By: CustomErr(-1)
 ├── file: src/lib.rs
-├── line: 368
+├── line: 353
 └── column: 44
     Caused By: ERR_UNKNOWN
-    ├── eno: -100
     ├── file: src/lib.rs
-    ├── line: 367
+    ├── line: 352
     └── column: 44
         Caused By: A custom message!
-        ├── eno: -11
         ├── file: src/lib.rs
-        ├── line: 366
+        ├── line: 351
         └── column: 44
             Caused By:
-            ├── eno: -1
             ├── file: src/lib.rs
-            ├── line: 365
+            ├── line: 350
             └── column: 44
                 Caused By: The final error message!
-                ├── eno: -9
                 ├── file: src/lib.rs
-                ├── line: 364
+                ├── line: 349
                 └── column: 41
 ```

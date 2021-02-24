@@ -111,25 +111,14 @@ macro_rules! info_omit {
 /// print debug-info, eg: modular and file path, line number ...
 #[macro_export]
 macro_rules! d {
-    ($eno: expr, $info: expr) => {{
-        SimpleMsg::newx($eno, file!(), line!(), column!(), $info.to_string())
+    ($err: expr) => {{
+        SimpleMsg::new($err, file!(), line!(), column!())
     }};
-    (@$eno: expr) => {{
-        $crate::d!($eno, "")
-    }};
-    ($info: expr) => {{
-        SimpleMsg::new(file!(), line!(), column!(), $info.to_string())
+    (@$err: expr) => {{
+        $crate::d!(format!("{:?}", $err))
     }};
     () => {{
         $crate::d!("")
-    }};
-}
-
-/// print debug-info, eg: modular and file path, line number ...
-#[macro_export]
-macro_rules! e {
-    ($eno: expr) => {{
-        $crate::d!($eno, stringify!($eno))
     }};
 }
 
@@ -154,20 +143,19 @@ macro_rules! ts {
 
 /// get current native-local-datatime(+8)
 #[macro_export]
-macro_rules! datetime_local {
+macro_rules! datetime {
     ($ts: expr) => {{
-        crate::gen_datetime_local($ts as i64)
+        crate::gen_datetime($ts as i64)
     }};
     () => {{
-        datetime_local!($crate::ts!())
+        datetime!($crate::ts!())
     }};
 }
 
 /// generate a 'formated +8 datetime'
-pub fn gen_datetime_local(ts: i64) -> String {
-    time::OffsetDateTime::from_unix_timestamp(ts)
-        .to_offset(time::offset!(+8))
-        .format("%F %T")
+#[inline(always)]
+pub fn gen_datetime(ts: i64) -> String {
+    time::OffsetDateTime::from_unix_timestamp(ts).format("%F %T")
 }
 
 #[inline(always)]
@@ -209,7 +197,7 @@ pub fn genlog(mut e: Box<dyn RucError>) -> String {
 fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
     format!(
         "\n\x1b[31;01m# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]\x1b[00m",
-        time = datetime_local!(),
+        time = datetime!(),
         n = idx,
         pid = pid,
         ns = ns,
@@ -221,7 +209,7 @@ fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
 fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
     format!(
         "\n# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]",
-        time = datetime_local!(),
+        time = datetime!(),
         n = idx,
         pid = pid,
         ns = ns,
@@ -275,10 +263,6 @@ macro_rules! sleep_ms {
 /// Generate error with debug info
 #[macro_export]
 macro_rules! eg {
-    ($eno: expr, $msg: expr) => {{
-        Box::new($crate::err::SimpleError::new($crate::d!($eno, $msg), None))
-            as Box<dyn RucError>
-    }};
     ($msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
             as Box<dyn RucError>
@@ -350,8 +334,6 @@ mod tests {
     use super::*;
     use std::process;
 
-    const ERR_UNKNOWN: i32 = -100;
-
     #[test]
     fn t_get_pidns() {
         let ns_name = pnk!(get_pidns(process::id()));
@@ -361,11 +343,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn t_display_style() {
-        let l1 = || -> Result<()> { Err(eg!(-9, "The final error message!")) };
+        #[derive(Debug, Eq, PartialEq)]
+        struct CustomErr(i32);
+
+        let l1 = || -> Result<()> { Err(eg!("The final error message!")) };
         let l2 = || -> Result<()> { l1().c(d!()) };
-        let l3 = || -> Result<()> { l2().c(d!(-11, "A custom message!")) };
-        let l4 = || -> Result<()> { l3().c(e!(ERR_UNKNOWN)) };
-        let l5 = || -> Result<()> { l4().c(d!(@-12)) };
+        let l3 = || -> Result<()> { l2().c(d!("A custom message!")) };
+        let l4 = || -> Result<()> { l3().c(d!("ERR_UNKNOWN")) };
+        let l5 = || -> Result<()> { l4().c(d!(@CustomErr(-1))) };
 
         pnk!(l5());
     }
