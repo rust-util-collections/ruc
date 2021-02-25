@@ -5,6 +5,7 @@ build:
 
 lint:
 	cargo clippy
+	cargo clippy --tests
 
 release:
 	cargo build --release
