@@ -112,7 +112,7 @@ macro_rules! info_omit {
 #[macro_export]
 macro_rules! d {
     ($err: expr) => {{
-        SimpleMsg::new($err, file!(), line!(), column!())
+        $crate::err::SimpleMsg::new($err, file!(), line!(), column!())
     }};
     (@$err: expr) => {{
         $crate::d!(format!("{:?}", $err))
@@ -145,10 +145,10 @@ macro_rules! ts {
 #[macro_export]
 macro_rules! datetime {
     ($ts: expr) => {{
-        crate::gen_datetime($ts as i64)
+        $crate::gen_datetime($ts as i64)
     }};
     () => {{
-        datetime!($crate::ts!())
+        $crate::datetime!($crate::ts!())
     }};
 }
 
@@ -162,7 +162,7 @@ pub fn gen_datetime(ts: i64) -> String {
 #[cfg(target_os = "linux")]
 fn get_pidns(pid: u32) -> Result<String> {
     std::fs::read_link(format!("/proc/{}/ns/pid", pid))
-        .c(crate::d!())
+        .c(d!())
         .map(|p| {
             p.to_string_lossy()
                 .trim_start_matches("pid:[")
