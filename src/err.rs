@@ -4,6 +4,7 @@
 //! All errors will be converted to RucError.
 //!
 use std::{
+    collections::HashSet,
     error::Error,
     fmt::{Debug, Display},
 };
@@ -15,14 +16,45 @@ pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
 pub trait RucError: Display + Debug + Send {
     /// compare two object
     fn eq(&self, another: &dyn RucError) -> bool {
-        self.get_error() == another.get_error()
+        self.get_lowest_error() == another.get_lowest_error()
     }
 
-    /// convert the inner error to string
-    fn get_error(&self) -> String;
+    /// check if any node from the error_chain matches the given error
+    fn eq_any(&self, another: &dyn RucError) -> bool {
+        let mut b;
+
+        let mut self_list = HashSet::new();
+        self_list.insert(self.get_current_error());
+        b = self.cause_ref();
+        while let Some(next) = b {
+            self_list.insert(next.get_current_error());
+            b = next.cause_ref();
+        }
+
+        let mut target_list = HashSet::new();
+        target_list.insert(another.get_current_error());
+        b = another.cause_ref();
+        while let Some(next) = b {
+            target_list.insert(next.get_current_error());
+            b = next.cause_ref();
+        }
+
+        !self_list.is_disjoint(&target_list)
+    }
+
+    /// convert the error of current level to string
+    fn get_current_error(&self) -> String;
+
+    /// convert the error of lowest level to string
+    fn get_lowest_error(&self) -> String;
 
     /// point to a error which caused current error
     fn cause(&mut self) -> Option<Box<dyn RucError>> {
+        None
+    }
+
+    /// a ref version of `cause()`
+    fn cause_ref(&self) -> Option<&dyn RucError> {
         None
     }
 
@@ -116,9 +148,15 @@ impl<E: Debug + Display + Send + 'static> Into<Box<dyn RucError>>
 impl<E: Debug + Display + Send + 'static> RucError for SimpleError<E> {
     /// get the final(lowest) error
     #[inline(always)]
-    fn get_error(&self) -> String {
+    fn get_current_error(&self) -> String {
+        self.msg.err.to_string()
+    }
+
+    /// get the final(lowest) error
+    #[inline(always)]
+    fn get_lowest_error(&self) -> String {
         if let Some(next) = self.cause.as_ref() {
-            next.get_error()
+            next.get_lowest_error()
         } else {
             self.msg.err.to_string()
         }
@@ -127,6 +165,11 @@ impl<E: Debug + Display + Send + 'static> RucError for SimpleError<E> {
     #[inline(always)]
     fn cause(&mut self) -> Option<Box<dyn RucError>> {
         self.cause.take()
+    }
+
+    #[inline(always)]
+    fn cause_ref(&self) -> Option<&dyn RucError> {
+        self.cause.as_deref()
     }
 }
 
