@@ -114,9 +114,14 @@ impl<E: Debug + Display + Send + 'static> Into<Box<dyn RucError>>
 }
 
 impl<E: Debug + Display + Send + 'static> RucError for SimpleError<E> {
+    /// get the final(lowest) error
     #[inline(always)]
     fn get_error(&self) -> String {
-        self.msg.err.to_string()
+        if let Some(next) = self.cause.as_ref() {
+            next.get_error()
+        } else {
+            self.msg.err.to_string()
+        }
     }
 
     #[inline(always)]
