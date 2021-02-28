@@ -59,12 +59,12 @@ pub trait RucError: Display + Debug + Send {
     }
 
     /// generate the final error msg
-    fn display_chain(&mut self) -> String {
+    fn display_chain(&self) -> String {
         let mut res = "\nError: ".to_owned();
         res.push_str(&self.to_string());
-        let mut e = self.cause();
+        let mut e = self.cause_ref();
         let mut indent_num = 0;
-        while let Some(mut c) = e {
+        while let Some(c) = e {
             let mut prefix = "\n".to_owned();
             (0..indent_num).for_each(|_| {
                 prefix.push_str("    ");
@@ -73,7 +73,7 @@ pub trait RucError: Display + Debug + Send {
             res.push_str("Caused By: ");
             res.push_str(&c.to_string().replace("\n", &prefix));
             indent_num += 1;
-            e = c.cause();
+            e = c.cause_ref();
         }
         res
     }

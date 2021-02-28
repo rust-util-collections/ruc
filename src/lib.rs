@@ -178,7 +178,18 @@ fn get_pidns(_pid: u32) -> Result<String> {
 }
 
 /// generate the log string
-pub fn genlog(mut e: Box<dyn RucError>) -> String {
+#[inline(always)]
+pub fn genlog(e: &dyn RucError) -> String {
+    genlog_x(e, false)
+}
+
+/// generate log in the original `rust debug` format
+#[inline(always)]
+pub fn genlog_debug(e: &dyn RucError) -> String {
+    genlog_x(e, true)
+}
+
+fn genlog_x(e: &dyn RucError, debug_mode: bool) -> String {
     let pid = std::process::id();
 
     // 内部不能再调用`p`, 否则可能无限循环
@@ -186,7 +197,13 @@ pub fn genlog(mut e: Box<dyn RucError>) -> String {
 
     let mut logn = LOG_LK.lock().unwrap();
     let mut res = genlog_fmt(*logn, ns, pid);
-    res.push_str(&e.display_chain());
+
+    if debug_mode {
+        res.push_str(&format!(" {:?}", e));
+    } else {
+        res.push_str(&e.display_chain());
+    }
+
     *logn += 1;
 
     res
@@ -218,8 +235,14 @@ fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
 
 /// print log
 #[inline(always)]
-pub fn p(e: Box<dyn RucError>) {
+pub fn p(e: &dyn RucError) {
     eprintln!("{}", genlog(e));
+}
+
+/// print log in `rust debug` format
+#[inline(always)]
+pub fn p_debug(e: &dyn RucError) {
+    eprintln!("{}", genlog_debug(e));
 }
 
 /// Just a panic
@@ -236,8 +259,15 @@ macro_rules! die {
 
 /// panic after printing `error_chain`
 #[inline(always)]
-pub fn pdie(e: Box<dyn RucError>) -> ! {
+pub fn pdie(e: &dyn RucError) -> ! {
     p(e);
+    crate::die!();
+}
+
+/// panic after printing `error_chain`
+#[inline(always)]
+pub fn pdie_debug(e: &dyn RucError) -> ! {
+    p_debug(e);
     crate::die!();
 }
 
@@ -245,10 +275,20 @@ pub fn pdie(e: Box<dyn RucError>) -> ! {
 #[macro_export]
 macro_rules! pnk {
     ($ops: expr) => {{
-        $ops.c($crate::d!()).unwrap_or_else(|e| $crate::pdie(e))
+        $ops.c($crate::d!())
+            .unwrap_or_else(|e| $crate::pdie(e.as_ref()))
     }};
     ($ops: expr, $msg: expr) => {{
-        $ops.c($crate::d!($msg)).unwrap_or_else(|e| $crate::pdie(e))
+        $ops.c($crate::d!($msg))
+            .unwrap_or_else(|e| $crate::pdie(e.as_ref()))
+    }};
+    (@$ops: expr) => {{
+        $ops.c($crate::d!())
+            .unwrap_or_else(|e| $crate::pdie_debug(e.as_ref()))
+    }};
+    (@$ops: expr, $msg: expr) => {{
+        $ops.c($crate::d!($msg))
+            .unwrap_or_else(|e| $crate::pdie_debug(e.as_ref()))
     }};
 }
 
@@ -265,7 +305,7 @@ macro_rules! sleep_ms {
 macro_rules! eg {
     ($msg: expr) => {{
         Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
-            as Box<dyn RucError>
+            as Box<dyn $crate::err::RucError>
     }};
     (@$msg: expr) => {
         $crate::eg!(format!("{:#?}", $msg))
@@ -340,9 +380,7 @@ mod tests {
         assert!(1 < ns_name.len());
     }
 
-    #[test]
-    #[should_panic]
-    fn t_display_style() {
+    fn t_display_style_inner() -> Result<()> {
         #[derive(Debug, Eq, PartialEq)]
         struct CustomErr(i32);
 
@@ -352,7 +390,19 @@ mod tests {
         let l4 = || -> Result<()> { l3().c(d!("ERR_UNKNOWN")) };
         let l5 = || -> Result<()> { l4().c(d!(@CustomErr(-1))) };
 
-        pnk!(l5());
+        l5().c(d!())
+    }
+
+    #[test]
+    #[should_panic]
+    fn t_display_style() {
+        pnk!(t_display_style_inner());
+    }
+
+    #[test]
+    #[should_panic]
+    fn t_display_style_debug() {
+        pnk!(@t_display_style_inner());
     }
 
     #[test]
