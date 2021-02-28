@@ -15,7 +15,7 @@ make doc
 > **Tips**: you can easily implement your own `Error` type.
 
 ```rust
-use myutil::{err::*, *};
+use ruc::{err::*, *};
 
 #[derive(Debug, Eq, PartialEq)]
 struct CustomErr(i32);
