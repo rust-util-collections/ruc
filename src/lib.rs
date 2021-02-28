@@ -82,10 +82,10 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! info {
     ($ops: expr) => {{
-        $ops.c($crate::d!()).map_err($crate::p)
+        $ops.c($crate::d!()).map_err(|e| $crate::p(e.as_ref()))
     }};
     ($ops: expr, $msg: expr) => {{
-        $ops.c($crate::d!($msg)).map_err($crate::p)
+        $ops.c($crate::d!($msg)).map_err(|e| $crate::p(e.as_ref()))
     }};
 }
 
@@ -173,6 +173,7 @@ fn get_pidns(pid: u32) -> Result<String> {
 
 #[inline(always)]
 #[cfg(not(target_os = "linux"))]
+#[allow(clippy::unnecessary_wraps)]
 fn get_pidns(_pid: u32) -> Result<String> {
     Ok("NULL".to_owned())
 }
