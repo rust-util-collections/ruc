@@ -316,7 +316,7 @@ macro_rules! eg {
     };
 }
 
-/// test assert in `MyUtil` style
+/// test assert in `RUC` style
 #[macro_export]
 macro_rules! so_eq {
     ($lv: expr, $rv: expr) => {{
@@ -331,7 +331,7 @@ macro_rules! so_eq {
     }};
 }
 
-/// test assert in `MyUtil` style
+/// test assert in `RUC` style
 #[macro_export]
 macro_rules! so_ne {
     ($lv: expr, $rv: expr) => {{
@@ -346,7 +346,7 @@ macro_rules! so_ne {
     }};
 }
 
-/// test assert in `MyUtil` style
+/// test assert in `RUC` style
 #[macro_export]
 macro_rules! so_le {
     ($lv: expr, $rv: expr) => {{
