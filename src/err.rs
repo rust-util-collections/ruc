@@ -4,6 +4,7 @@
 //! All errors will be converted to RucError.
 //!
 use std::{
+    collections::HashSet,
     error::Error,
     fmt::{Debug, Display},
 };
@@ -13,8 +14,47 @@ pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
 
 /// the major trait defination
 pub trait RucError: Display + Debug + Send {
+    /// compare two object
+    fn eq(&self, another: &dyn RucError) -> bool {
+        self.get_lowest_error() == another.get_lowest_error()
+    }
+
+    /// check if any node from the error_chain matches the given error
+    fn eq_any(&self, another: &dyn RucError) -> bool {
+        let mut b;
+
+        let mut self_list = HashSet::new();
+        self_list.insert(self.get_current_error());
+        b = self.cause_ref();
+        while let Some(next) = b {
+            self_list.insert(next.get_current_error());
+            b = next.cause_ref();
+        }
+
+        let mut target_list = HashSet::new();
+        target_list.insert(another.get_current_error());
+        b = another.cause_ref();
+        while let Some(next) = b {
+            target_list.insert(next.get_current_error());
+            b = next.cause_ref();
+        }
+
+        !self_list.is_disjoint(&target_list)
+    }
+
+    /// convert the error of current level to string
+    fn get_current_error(&self) -> String;
+
+    /// convert the error of lowest level to string
+    fn get_lowest_error(&self) -> String;
+
     /// point to a error which caused current error
     fn cause(&mut self) -> Option<Box<dyn RucError>> {
+        None
+    }
+
+    /// a ref version of `cause()`
+    fn cause_ref(&self) -> Option<&dyn RucError> {
         None
     }
 
@@ -40,26 +80,26 @@ pub trait RucError: Display + Debug + Send {
 }
 
 /// convert all to this
-pub trait RucResult<T, E: Debug + Display + Eq + Send> {
+pub trait RucResult<T, E: Debug + Display + Send> {
     /// alias for 'chain_error'
     fn c(self, msg: SimpleMsg<E>) -> Result<T>;
 }
 
-impl<T, E: Debug + Display + Eq + Send> RucResult<T, E> for Result<T> {
+impl<T, E: Debug + Display + Send> RucResult<T, E> for Result<T> {
     #[inline(always)]
     fn c(self, msg: SimpleMsg<E>) -> Result<T> {
         self.map_err(|e| SimpleError::new(msg, Some(e)).into())
     }
 }
 
-impl<T, E: Debug + Display + Eq + Send> RucResult<T, E> for Option<T> {
+impl<T, E: Debug + Display + Send> RucResult<T, E> for Option<T> {
     #[inline(always)]
     fn c(self, msg: SimpleMsg<E>) -> Result<T> {
         self.ok_or_else(|| SimpleError::new(msg, None).into())
     }
 }
 
-impl<T, E: Debug + Display + Eq + Send, ERR: Error> RucResult<T, E>
+impl<T, E: Debug + Display + Send, ERR: Error> RucResult<T, E>
     for std::result::Result<T, ERR>
 {
     #[inline(always)]
@@ -78,12 +118,12 @@ impl<T, E: Debug + Display + Eq + Send, ERR: Error> RucResult<T, E>
 
 /// A pre-impled Error
 #[derive(Debug)]
-pub struct SimpleError<E: Debug + Display + Eq + Send + 'static> {
+pub struct SimpleError<E: Debug + Display + Send + 'static> {
     msg: SimpleMsg<E>,
     cause: Option<Box<dyn RucError>>,
 }
 
-impl<E: Debug + Display + Eq + Send + 'static> SimpleError<E> {
+impl<E: Debug + Display + Send + 'static> SimpleError<E> {
     /// new it
     #[inline(always)]
     pub fn new(msg: SimpleMsg<E>, cause: Option<Box<dyn RucError>>) -> Self {
@@ -91,13 +131,13 @@ impl<E: Debug + Display + Eq + Send + 'static> SimpleError<E> {
     }
 }
 
-impl<E: Debug + Display + Eq + Send + 'static> Display for SimpleError<E> {
+impl<E: Debug + Display + Send + 'static> Display for SimpleError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.msg)
     }
 }
 
-impl<E: Debug + Display + Eq + Send + 'static> Into<Box<dyn RucError>>
+impl<E: Debug + Display + Send + 'static> Into<Box<dyn RucError>>
     for SimpleError<E>
 {
     fn into(self) -> Box<dyn RucError> {
@@ -105,16 +145,37 @@ impl<E: Debug + Display + Eq + Send + 'static> Into<Box<dyn RucError>>
     }
 }
 
-impl<E: Debug + Display + Eq + Send + 'static> RucError for SimpleError<E> {
+impl<E: Debug + Display + Send + 'static> RucError for SimpleError<E> {
+    /// get the final(lowest) error
+    #[inline(always)]
+    fn get_current_error(&self) -> String {
+        self.msg.err.to_string()
+    }
+
+    /// get the final(lowest) error
+    #[inline(always)]
+    fn get_lowest_error(&self) -> String {
+        if let Some(next) = self.cause.as_ref() {
+            next.get_lowest_error()
+        } else {
+            self.msg.err.to_string()
+        }
+    }
+
     #[inline(always)]
     fn cause(&mut self) -> Option<Box<dyn RucError>> {
         self.cause.take()
+    }
+
+    #[inline(always)]
+    fn cause_ref(&self) -> Option<&dyn RucError> {
+        self.cause.as_deref()
     }
 }
 
 /// error + <file + line + column>
 #[derive(Debug)]
-pub struct SimpleMsg<E: Debug + Display + Eq + Send + 'static> {
+pub struct SimpleMsg<E: Debug + Display + Send + 'static> {
     /// actual error
     pub err: E,
     /// file path
@@ -125,7 +186,7 @@ pub struct SimpleMsg<E: Debug + Display + Eq + Send + 'static> {
     pub column: u32,
 }
 
-impl<E: Debug + Display + Eq + Send + 'static> SimpleMsg<E> {
+impl<E: Debug + Display + Send + 'static> SimpleMsg<E> {
     /// create new error
     #[inline(always)]
     pub fn new(err: E, file: &str, line: u32, column: u32) -> Self {
@@ -138,7 +199,7 @@ impl<E: Debug + Display + Eq + Send + 'static> SimpleMsg<E> {
     }
 }
 
-impl<E: Debug + Display + Eq + Send + 'static> Display for SimpleMsg<E> {
+impl<E: Debug + Display + Send + 'static> Display for SimpleMsg<E> {
     #[cfg(feature = "ansi")]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f,
@@ -154,7 +215,7 @@ impl<E: Debug + Display + Eq + Send + 'static> Display for SimpleMsg<E> {
     }
 }
 
-impl<E: Debug + Display + Eq + Send + 'static> From<SimpleMsg<E>>
+impl<E: Debug + Display + Send + 'static> From<SimpleMsg<E>>
     for Box<dyn RucError>
 {
     fn from(m: SimpleMsg<E>) -> Self {
@@ -181,5 +242,14 @@ mod test {
                 .unwrap_err()
                 .display_chain()
         );
+
+        let e1: Box<dyn RucError> =
+            SimpleError::new(SimpleMsg::new("***", "/tmp/xx.rs", 9, 90), None)
+                .into();
+        let e2: Box<dyn RucError> =
+            SimpleError::new(SimpleMsg::new("***", "/tmp/xx.rs", 9, 90), None)
+                .into();
+
+        assert!(e1.eq(e2.as_ref()));
     }
 }
