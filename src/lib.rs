@@ -234,13 +234,13 @@ fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
     )
 }
 
-/// print log
+/// Print log
 #[inline(always)]
 pub fn p(e: &dyn RucError) {
     eprintln!("{}", genlog(e));
 }
 
-/// print log in `rust debug` format
+/// Print log in `rust debug` format
 #[inline(always)]
 pub fn p_debug(e: &dyn RucError) {
     eprintln!("{}", genlog_debug(e));
@@ -258,42 +258,42 @@ macro_rules! die {
     };
 }
 
-/// panic after printing `error_chain`
+/// Panic after printing `error_chain`
 #[inline(always)]
-pub fn pdie(e: &dyn RucError) -> ! {
+pub fn p_die(e: &dyn RucError) -> ! {
     p(e);
     crate::die!();
 }
 
-/// panic after printing `error_chain`
+/// Panic after printing `error_chain`
 #[inline(always)]
-pub fn pdie_debug(e: &dyn RucError) -> ! {
+pub fn p_die_debug(e: &dyn RucError) -> ! {
     p_debug(e);
     crate::die!();
 }
 
-/// print log, and panic
+/// Print log, and panic
 #[macro_export]
 macro_rules! pnk {
     ($ops: expr) => {{
         $ops.c($crate::d!())
-            .unwrap_or_else(|e| $crate::pdie(e.as_ref()))
+            .unwrap_or_else(|e| $crate::p_die(e.as_ref()))
     }};
     ($ops: expr, $msg: expr) => {{
         $ops.c($crate::d!($msg))
-            .unwrap_or_else(|e| $crate::pdie(e.as_ref()))
+            .unwrap_or_else(|e| $crate::p_die(e.as_ref()))
     }};
     (@$ops: expr) => {{
         $ops.c($crate::d!())
-            .unwrap_or_else(|e| $crate::pdie_debug(e.as_ref()))
+            .unwrap_or_else(|e| $crate::p_die_debug(e.as_ref()))
     }};
     (@$ops: expr, $msg: expr) => {{
         $ops.c($crate::d!($msg))
-            .unwrap_or_else(|e| $crate::pdie_debug(e.as_ref()))
+            .unwrap_or_else(|e| $crate::p_die_debug(e.as_ref()))
     }};
 }
 
-/// sleep in milliseconds
+/// Sleep in milliseconds
 #[macro_export]
 macro_rules! sleep_ms {
     ($n: expr) => {{
@@ -316,7 +316,7 @@ macro_rules! eg {
     };
 }
 
-/// test assert in `RUC` style
+/// Test assert in `RUC` style
 #[macro_export]
 macro_rules! so_eq {
     ($lv: expr, $rv: expr) => {{
@@ -331,7 +331,7 @@ macro_rules! so_eq {
     }};
 }
 
-/// test assert in `RUC` style
+/// Test assert in `RUC` style
 #[macro_export]
 macro_rules! so_ne {
     ($lv: expr, $rv: expr) => {{
@@ -346,7 +346,7 @@ macro_rules! so_ne {
     }};
 }
 
-/// test assert in `RUC` style
+/// Test assert in `RUC` style
 #[macro_export]
 macro_rules! so_le {
     ($lv: expr, $rv: expr) => {{
@@ -361,7 +361,7 @@ macro_rules! so_le {
     }};
 }
 
-/// an `ok` wrapper
+/// An `ok` wrapper
 #[macro_export]
 macro_rules! ok {
     () => {{
