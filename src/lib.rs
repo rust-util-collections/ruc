@@ -82,10 +82,11 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! info {
     ($ops: expr) => {{
-        $ops.c($crate::d!()).map_err(|e| $crate::p(e.as_ref()))
+        $ops.c($crate::d!()).map_err(|e| $crate::print(e.as_ref()))
     }};
     ($ops: expr, $msg: expr) => {{
-        $ops.c($crate::d!($msg)).map_err(|e| $crate::p(e.as_ref()))
+        $ops.c($crate::d!($msg))
+            .map_err(|e| $crate::print(e.as_ref()))
     }};
 }
 
@@ -236,14 +237,28 @@ fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
 
 /// Print log
 #[inline(always)]
-pub fn p(e: &dyn RucError) {
+pub fn print(e: &dyn RucError) {
     eprintln!("{}", genlog(e));
+}
+
+/// Print log
+#[deprecated(since = "0.5.5", note = "use `print` instead!")]
+#[inline(always)]
+pub fn p(e: &dyn RucError) {
+    print(e);
 }
 
 /// Print log in `rust debug` format
 #[inline(always)]
-pub fn p_debug(e: &dyn RucError) {
+pub fn print_debug(e: &dyn RucError) {
     eprintln!("{}", genlog_debug(e));
+}
+
+/// Print log in `rust debug` format
+#[deprecated(since = "0.5.5", note = "use `print_debug` instead!")]
+#[inline(always)]
+pub fn p_debug(e: &dyn RucError) {
+    print_debug(e);
 }
 
 /// Just a panic
@@ -260,15 +275,22 @@ macro_rules! die {
 
 /// Panic after printing `error_chain`
 #[inline(always)]
-pub fn p_die(e: &dyn RucError) -> ! {
-    p(e);
+pub fn print_die(e: &dyn RucError) -> ! {
+    print(e);
     crate::die!();
 }
 
 /// Panic after printing `error_chain`
+#[deprecated(since = "0.5.5", note = "use `print_die` instead!")]
 #[inline(always)]
-pub fn p_die_debug(e: &dyn RucError) -> ! {
-    p_debug(e);
+pub fn p_die(e: &dyn RucError) -> ! {
+    print_die(e);
+}
+
+/// Panic after printing `error_chain`
+#[inline(always)]
+pub fn print_die_debug(e: &dyn RucError) -> ! {
+    print_debug(e);
     crate::die!();
 }
 
@@ -277,19 +299,19 @@ pub fn p_die_debug(e: &dyn RucError) -> ! {
 macro_rules! pnk {
     ($ops: expr) => {{
         $ops.c($crate::d!())
-            .unwrap_or_else(|e| $crate::p_die(e.as_ref()))
+            .unwrap_or_else(|e| $crate::print_die(e.as_ref()))
     }};
     ($ops: expr, $msg: expr) => {{
         $ops.c($crate::d!($msg))
-            .unwrap_or_else(|e| $crate::p_die(e.as_ref()))
+            .unwrap_or_else(|e| $crate::print_die(e.as_ref()))
     }};
     (@$ops: expr) => {{
         $ops.c($crate::d!())
-            .unwrap_or_else(|e| $crate::p_die_debug(e.as_ref()))
+            .unwrap_or_else(|e| $crate::print_die_debug(e.as_ref()))
     }};
     (@$ops: expr, $msg: expr) => {{
         $ops.c($crate::d!($msg))
-            .unwrap_or_else(|e| $crate::p_die_debug(e.as_ref()))
+            .unwrap_or_else(|e| $crate::print_die_debug(e.as_ref()))
     }};
 }
 
