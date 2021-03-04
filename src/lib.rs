@@ -93,7 +93,7 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! info {
     ($ops: expr) => {{
-        $ops.c($crate::d!()).map_err(|e| e.print(e))
+        $ops.c($crate::d!()).map_err(|e| e.print())
     }};
     ($ops: expr, $msg: expr) => {{
         $ops.c($crate::d!($msg)).map_err(|e| e.print())
@@ -260,5 +260,13 @@ mod tests {
             assert_eq!(1 + idx, k);
             assert_eq!(2 * k, v);
         }
+    }
+
+    #[test]
+    fn t_macro() {
+        let _ = info!(Err::<u8, _>(eg!()));
+        omit!(Err::<u8, _>(eg!()));
+        info_omit!(Err::<u8, _>(eg!()));
+        pd!(ts!());
     }
 }
