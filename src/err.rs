@@ -135,6 +135,10 @@ pub trait RucError: Display + Debug + Send {
             )
         }
 
+        #[cfg(target_arch = "wasm32")]
+        let pid = 0;
+
+        #[cfg(not(target_arch = "wasm32"))]
         let pid = std::process::id();
 
         // can not call `p` in the inner,

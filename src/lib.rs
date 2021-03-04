@@ -164,9 +164,16 @@ macro_rules! datetime {
 }
 
 /// generate a 'formated +8 datetime'
+#[cfg(not(target_arch = "wasm32"))]
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
     time::OffsetDateTime::from_unix_timestamp(ts).format("%F %T")
+}
+
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+pub fn gen_datetime(ts: i64) -> String {
+    "0000-00-00 00:00:00".to_owned()
 }
 
 /// Just a panic

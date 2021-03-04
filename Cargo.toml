@@ -12,6 +12,8 @@ repository = "https://gitee.com/kt10/ruc.git"
 
 [dependencies]
 lazy_static = "1.4.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 time = "0.2.23"
 
 [features]
