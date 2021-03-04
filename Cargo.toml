@@ -1,7 +1,7 @@
 [package]
 name = "ruc"
-version = "0.5.5"
-authors = ["FanHui <fanhui.x@gmail.com>"]
+version = "0.6.0"
+authors = ["FanHui <kt71@qq.com>"]
 edition = "2018"
 description = "Rust Util Collection, include a friendly `error-chain` and many other utils."
 keywords = ["error", "error-chain"]

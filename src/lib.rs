@@ -3,19 +3,30 @@
 //!
 //! A useful util-collections for Rust.
 //!
+//! ## Example
+//!
+//! ```rust
+//! use ruc::{err::*, *};
+//!
+//! #[derive(Debug, Eq, PartialEq)]
+//! struct CustomErr(i32);
+//!
+//! fn will_panic() {
+//!     let l1 = || -> Result<()> { Err(eg!("The final error message!")) };
+//!     let l2 = || -> Result<()> { l1().c(d!()) };
+//!     let l3 = || -> Result<()> { l2().c(d!("A custom message!")) };
+//!     let l4 = || -> Result<()> { l3().c(d!("ERR_UNKNOWN")) };
+//!     let l5 = || -> Result<()> { l4().c(d!(@CustomErr(-1))) };
+//!
+//!     pnk!(l5());
+//! }
+//! ```
 
 #![deny(warnings)]
 #![warn(missing_docs, unused_import_braces, unused_extern_crates)]
 
 pub mod err;
-
-use err::*;
-use lazy_static::lazy_static;
-use std::sync::Mutex;
-
-lazy_static! {
-    static ref LOG_LK: Mutex<u64> = Mutex::new(0);
-}
+pub use err::*;
 
 /// map operations
 #[macro_export]
@@ -82,11 +93,10 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! info {
     ($ops: expr) => {{
-        $ops.c($crate::d!()).map_err(|e| $crate::print(e.as_ref()))
+        $ops.c($crate::d!()).map_err(|e| e.print(e))
     }};
     ($ops: expr, $msg: expr) => {{
-        $ops.c($crate::d!($msg))
-            .map_err(|e| $crate::print(e.as_ref()))
+        $ops.c($crate::d!($msg)).map_err(|e| e.print())
     }};
 }
 
@@ -119,7 +129,7 @@ macro_rules! d {
         $crate::d!(format!("{:?}", $err))
     }};
     () => {{
-        $crate::d!("")
+        $crate::d!("...")
     }};
 }
 
@@ -159,108 +169,6 @@ pub fn gen_datetime(ts: i64) -> String {
     time::OffsetDateTime::from_unix_timestamp(ts).format("%F %T")
 }
 
-#[inline(always)]
-#[cfg(target_os = "linux")]
-fn get_pidns(pid: u32) -> Result<String> {
-    std::fs::read_link(format!("/proc/{}/ns/pid", pid))
-        .c(d!())
-        .map(|p| {
-            p.to_string_lossy()
-                .trim_start_matches("pid:[")
-                .trim_end_matches(']')
-                .to_owned()
-        })
-}
-
-#[inline(always)]
-#[cfg(not(target_os = "linux"))]
-#[allow(clippy::unnecessary_wraps)]
-fn get_pidns(_pid: u32) -> Result<String> {
-    Ok("NULL".to_owned())
-}
-
-/// generate the log string
-#[inline(always)]
-pub fn genlog(e: &dyn RucError) -> String {
-    genlog_x(e, false)
-}
-
-/// generate log in the original `rust debug` format
-#[inline(always)]
-pub fn genlog_debug(e: &dyn RucError) -> String {
-    genlog_x(e, true)
-}
-
-fn genlog_x(e: &dyn RucError, debug_mode: bool) -> String {
-    let pid = std::process::id();
-
-    // 内部不能再调用`p`, 否则可能无限循环
-    let ns = get_pidns(pid).unwrap();
-
-    let mut logn = LOG_LK.lock().unwrap();
-    let mut res = genlog_fmt(*logn, ns, pid);
-
-    if debug_mode {
-        res.push_str(&format!(" {:?}", e));
-    } else {
-        res.push_str(&e.display_chain());
-    }
-
-    *logn += 1;
-
-    res
-}
-
-#[cfg(not(feature = "ansi"))]
-#[inline(always)]
-fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
-    format!(
-        "\n\x1b[31;01m# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]\x1b[00m",
-        time = datetime!(),
-        n = idx,
-        pid = pid,
-        ns = ns,
-    )
-}
-
-#[cfg(feature = "ansi")]
-#[inline(always)]
-fn genlog_fmt(idx: u64, ns: String, pid: u32) -> String {
-    format!(
-        "\n# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]",
-        time = datetime!(),
-        n = idx,
-        pid = pid,
-        ns = ns,
-    )
-}
-
-/// Print log
-#[inline(always)]
-pub fn print(e: &dyn RucError) {
-    eprintln!("{}", genlog(e));
-}
-
-/// Print log
-#[deprecated(since = "0.5.5", note = "use `print` instead!")]
-#[inline(always)]
-pub fn p(e: &dyn RucError) {
-    print(e);
-}
-
-/// Print log in `rust debug` format
-#[inline(always)]
-pub fn print_debug(e: &dyn RucError) {
-    eprintln!("{}", genlog_debug(e));
-}
-
-/// Print log in `rust debug` format
-#[deprecated(since = "0.5.5", note = "use `print_debug` instead!")]
-#[inline(always)]
-pub fn p_debug(e: &dyn RucError) {
-    print_debug(e);
-}
-
 /// Just a panic
 #[macro_export]
 macro_rules! die {
@@ -273,45 +181,21 @@ macro_rules! die {
     };
 }
 
-/// Panic after printing `error_chain`
-#[inline(always)]
-pub fn print_die(e: &dyn RucError) -> ! {
-    print(e);
-    crate::die!();
-}
-
-/// Panic after printing `error_chain`
-#[deprecated(since = "0.5.5", note = "use `print_die` instead!")]
-#[inline(always)]
-pub fn p_die(e: &dyn RucError) -> ! {
-    print_die(e);
-}
-
-/// Panic after printing `error_chain`
-#[inline(always)]
-pub fn print_die_debug(e: &dyn RucError) -> ! {
-    print_debug(e);
-    crate::die!();
-}
-
 /// Print log, and panic
 #[macro_export]
 macro_rules! pnk {
     ($ops: expr) => {{
-        $ops.c($crate::d!())
-            .unwrap_or_else(|e| $crate::print_die(e.as_ref()))
+        $ops.c($crate::d!()).unwrap_or_else(|e| e.print_die())
     }};
     ($ops: expr, $msg: expr) => {{
-        $ops.c($crate::d!($msg))
-            .unwrap_or_else(|e| $crate::print_die(e.as_ref()))
+        $ops.c($crate::d!($msg)).unwrap_or_else(|e| e.print_die())
     }};
     (@$ops: expr) => {{
-        $ops.c($crate::d!())
-            .unwrap_or_else(|e| $crate::print_die_debug(e.as_ref()))
+        $ops.c($crate::d!()).unwrap_or_else(|e| e.print_die_debug())
     }};
     (@$ops: expr, $msg: expr) => {{
         $ops.c($crate::d!($msg))
-            .unwrap_or_else(|e| $crate::print_die_debug(e.as_ref()))
+            .unwrap_or_else(|e| e.print_die_debug())
     }};
 }
 
@@ -338,70 +222,9 @@ macro_rules! eg {
     };
 }
 
-/// Test assert in `RUC` style
-#[macro_export]
-macro_rules! so_eq {
-    ($lv: expr, $rv: expr) => {{
-        let l = $lv;
-        let r = $rv;
-        if l != r {
-            return Err($crate::eg!(format!(
-                "Assert failed: {:?} == {:?}",
-                l, r
-            )));
-        }
-    }};
-}
-
-/// Test assert in `RUC` style
-#[macro_export]
-macro_rules! so_ne {
-    ($lv: expr, $rv: expr) => {{
-        let l = $lv;
-        let r = $rv;
-        if l == r {
-            return Err($crate::eg!(format!(
-                "Assert failed: {:?} != {:?}",
-                l, r
-            )));
-        }
-    }};
-}
-
-/// Test assert in `RUC` style
-#[macro_export]
-macro_rules! so_le {
-    ($lv: expr, $rv: expr) => {{
-        let l = $lv;
-        let r = $rv;
-        if l > r {
-            return Err($crate::eg!(format!(
-                "Assert failed: {:?} <= {:?}",
-                l, r
-            )));
-        }
-    }};
-}
-
-/// An `ok` wrapper
-#[macro_export]
-macro_rules! ok {
-    () => {{
-        let ok: std::io::Result<_> = Ok(());
-        ok.c(d!())
-    }};
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::process;
-
-    #[test]
-    fn t_get_pidns() {
-        let ns_name = pnk!(get_pidns(process::id()));
-        assert!(1 < ns_name.len());
-    }
 
     fn t_display_style_inner() -> Result<()> {
         #[derive(Debug, Eq, PartialEq)]

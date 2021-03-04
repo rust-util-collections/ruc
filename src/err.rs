@@ -3,6 +3,8 @@
 //!
 //! All errors will be converted to RucError.
 //!
+use lazy_static::lazy_static;
+use std::sync::Mutex;
 use std::{
     collections::HashSet,
     error::Error,
@@ -16,7 +18,7 @@ pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
 pub trait RucError: Display + Debug + Send {
     /// compare two object
     fn eq(&self, another: &dyn RucError) -> bool {
-        self.get_lowest_error() == another.get_lowest_error()
+        self.get_lowest_msg() == another.get_lowest_msg()
     }
 
     /// check if any node from the error_chain matches the given error
@@ -24,45 +26,43 @@ pub trait RucError: Display + Debug + Send {
         let mut b;
 
         let mut self_list = HashSet::new();
-        self_list.insert(self.get_current_error());
-        b = self.cause_ref();
+        self_list.insert(self.get_top_msg());
+        b = self.cause();
         while let Some(next) = b {
-            self_list.insert(next.get_current_error());
-            b = next.cause_ref();
+            self_list.insert(next.get_top_msg());
+            b = next.cause();
         }
 
         let mut target_list = HashSet::new();
-        target_list.insert(another.get_current_error());
-        b = another.cause_ref();
+        target_list.insert(another.get_top_msg());
+        b = another.cause();
         while let Some(next) = b {
-            target_list.insert(next.get_current_error());
-            b = next.cause_ref();
+            target_list.insert(next.get_top_msg());
+            b = next.cause();
         }
 
         !self_list.is_disjoint(&target_list)
     }
 
     /// convert the error of current level to string
-    fn get_current_error(&self) -> String;
+    fn get_top_msg(&self) -> String;
 
     /// convert the error of lowest level to string
-    fn get_lowest_error(&self) -> String;
+    fn get_lowest_msg(&self) -> String;
+
+    /// "error msg" + "debug info"
+    fn get_top_error(&self) -> String;
 
     /// point to a error which caused current error
-    fn cause(&mut self) -> Option<Box<dyn RucError>> {
-        None
-    }
-
-    /// a ref version of `cause()`
-    fn cause_ref(&self) -> Option<&dyn RucError> {
+    fn cause(&self) -> Option<&dyn RucError> {
         None
     }
 
     /// generate the final error msg
-    fn display_chain(&self) -> String {
+    fn stringify_chain(&self) -> String {
         let mut res = "\nError: ".to_owned();
-        res.push_str(&self.to_string());
-        let mut e = self.cause_ref();
+        res.push_str(&self.get_top_error());
+        let mut e = self.cause();
         let mut indent_num = 0;
         while let Some(c) = e {
             let mut prefix = "\n".to_owned();
@@ -71,15 +71,104 @@ pub trait RucError: Display + Debug + Send {
             });
             res.push_str(&prefix);
             res.push_str("Caused By: ");
-            res.push_str(&c.to_string().replace("\n", &prefix));
+            res.push_str(&c.get_top_error().replace("\n", &prefix));
             indent_num += 1;
-            e = c.cause_ref();
+            e = c.cause();
         }
         res
     }
+
+    /// Panic after printing `error_chain`
+    #[inline(always)]
+    fn print_die(&self) -> ! {
+        self.print();
+        panic!();
+    }
+
+    /// Panic after printing `error_chain`
+    #[inline(always)]
+    fn print_die_debug(&self) -> ! {
+        self.print_debug();
+        panic!();
+    }
+
+    /// Generate the log string
+    #[inline(always)]
+    fn generate_log(&self) -> String {
+        self.generate_log_custom(false)
+    }
+
+    /// Generate log in the original `rust debug` format
+    #[inline(always)]
+    fn generate_log_debug(&self) -> String {
+        self.generate_log_custom(true)
+    }
+
+    /// Generate the log string with custom mode
+    fn generate_log_custom(&self, debug_mode: bool) -> String {
+        lazy_static! {
+            // avoid out-of-order printing
+            static ref LOG_LK: Mutex<u64> = Mutex::new(0);
+        }
+
+        #[cfg(not(feature = "ansi"))]
+        #[inline(always)]
+        fn generate_log_header(idx: u64, ns: String, pid: u32) -> String {
+            format!(
+                "\n\x1b[31;01m# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]\x1b[00m",
+                time = crate::datetime!(),
+                n = idx,
+                pid = pid,
+                ns = ns,
+            )
+        }
+
+        #[cfg(feature = "ansi")]
+        #[inline(always)]
+        fn generate_log_header(idx: u64, ns: String, pid: u32) -> String {
+            format!(
+                "\n# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]",
+                time = crate::datetime!(),
+                n = idx,
+                pid = pid,
+                ns = ns,
+            )
+        }
+
+        let pid = std::process::id();
+
+        // can not call `p` in the inner,
+        // or will cause a infinite loop
+        let ns = get_pidns(pid).unwrap();
+
+        let mut logn = LOG_LK.lock().unwrap();
+        let mut res = generate_log_header(*logn, ns, pid);
+
+        if debug_mode {
+            res.push_str(&format!(" {:?}", self));
+        } else {
+            res.push_str(&self.stringify_chain());
+        }
+
+        *logn += 1;
+
+        res
+    }
+
+    /// Print log
+    #[inline(always)]
+    fn print(&self) {
+        eprintln!("{}", self);
+    }
+
+    /// Print log in `rust debug` format
+    #[inline(always)]
+    fn print_debug(&self) {
+        eprintln!("{}", self.generate_log_debug());
+    }
 }
 
-/// convert all to this
+/// Convert all `Result` to this
 pub trait RucResult<T, E: Debug + Display + Send> {
     /// alias for 'chain_error'
     fn c(self, msg: SimpleMsg<E>) -> Result<T>;
@@ -124,7 +213,7 @@ pub struct SimpleError<E: Debug + Display + Send + 'static> {
 }
 
 impl<E: Debug + Display + Send + 'static> SimpleError<E> {
-    /// new it
+    #[allow(missing_docs)]
     #[inline(always)]
     pub fn new(msg: SimpleMsg<E>, cause: Option<Box<dyn RucError>>) -> Self {
         SimpleError { msg, cause }
@@ -133,7 +222,7 @@ impl<E: Debug + Display + Send + 'static> SimpleError<E> {
 
 impl<E: Debug + Display + Send + 'static> Display for SimpleError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.msg)
+        write!(f, "{}", self.generate_log())
     }
 }
 
@@ -146,29 +235,29 @@ impl<E: Debug + Display + Send + 'static> Into<Box<dyn RucError>>
 }
 
 impl<E: Debug + Display + Send + 'static> RucError for SimpleError<E> {
-    /// get the final(lowest) error
+    /// get the top-level error message
     #[inline(always)]
-    fn get_current_error(&self) -> String {
+    fn get_top_msg(&self) -> String {
         self.msg.err.to_string()
     }
 
-    /// get the final(lowest) error
+    /// get the final(lowest) error message
     #[inline(always)]
-    fn get_lowest_error(&self) -> String {
+    fn get_lowest_msg(&self) -> String {
         if let Some(next) = self.cause.as_ref() {
-            next.get_lowest_error()
+            next.get_lowest_msg()
         } else {
             self.msg.err.to_string()
         }
     }
 
     #[inline(always)]
-    fn cause(&mut self) -> Option<Box<dyn RucError>> {
-        self.cause.take()
+    fn get_top_error(&self) -> String {
+        self.msg.to_string()
     }
 
     #[inline(always)]
-    fn cause_ref(&self) -> Option<&dyn RucError> {
+    fn cause(&self) -> Option<&dyn RucError> {
         self.cause.as_deref()
     }
 }
@@ -202,9 +291,11 @@ impl<E: Debug + Display + Send + 'static> SimpleMsg<E> {
 impl<E: Debug + Display + Send + 'static> Display for SimpleMsg<E> {
     #[cfg(feature = "ansi")]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,
-               "\x1b[01m{}\x1b[00m\n|-- \x1b[01mfile:\x1b[00m {}\n|-- \x1b[01mline:\x1b[00m {}\n`-- \x1b[01mcolumn:\x1b[00m {}",
-               self.err, self.file, self.line, self.column)
+        write!(
+            f,
+            "{}\n|-- file: {}\n|-- line: {}\n`-- column: {}",
+            self.err, self.file, self.line, self.column
+        )
     }
 
     #[cfg(not(feature = "ansi"))]
@@ -223,12 +314,39 @@ impl<E: Debug + Display + Send + 'static> From<SimpleMsg<E>>
     }
 }
 
+#[inline(always)]
+#[cfg(target_os = "linux")]
+fn get_pidns(pid: u32) -> Result<String> {
+    std::fs::read_link(format!("/proc/{}/ns/pid", pid))
+        .c(crate::d!())
+        .map(|p| {
+            p.to_string_lossy()
+                .trim_start_matches("pid:[")
+                .trim_end_matches(']')
+                .to_owned()
+        })
+}
+
+#[inline(always)]
+#[cfg(not(target_os = "linux"))]
+#[allow(clippy::unnecessary_wraps)]
+fn get_pidns(_pid: u32) -> Result<String> {
+    Ok("NULL".to_owned())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::process;
 
     #[test]
-    fn test() {
+    fn t_get_pidns() {
+        let ns_name = crate::pnk!(get_pidns(process::id()));
+        assert!(1 < ns_name.len());
+    }
+
+    #[test]
+    fn t_error_chain() {
         let res: Result<i32> = Err(SimpleError::new(
             SimpleMsg::new("***", "/tmp/xx.rs", 9, 90),
             None,
@@ -240,7 +358,7 @@ mod test {
                 .c(SimpleMsg::new("dog", "/tmp/xx.rs", 2, 20))
                 .c(SimpleMsg::new("pig", "/tmp/xx.rs", 3, 30))
                 .unwrap_err()
-                .display_chain()
+                .stringify_chain()
         );
 
         let e1: Box<dyn RucError> =
