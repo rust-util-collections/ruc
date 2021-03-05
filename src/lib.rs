@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn t_map() {
+    fn t_macro() {
         let s1 = map! {1 => 2, 2 => 4};
         let s2 = map! {B 1 => 2, 2 => 4};
         assert_eq!(s1.len(), s2.len());
@@ -267,13 +267,12 @@ mod tests {
             assert_eq!(1 + idx, k);
             assert_eq!(2 * k, v);
         }
-    }
 
-    #[test]
-    fn t_macro() {
         let _ = info!(Err::<u8, _>(eg!()));
         omit!(Err::<u8, _>(eg!()));
         info_omit!(Err::<u8, _>(eg!()));
         pd!(ts!());
+
+        sleep_ms!(1);
     }
 }
