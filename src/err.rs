@@ -230,11 +230,11 @@ impl<E: Debug + Display + Send + 'static> Display for SimpleError<E> {
     }
 }
 
-impl<E: Debug + Display + Send + 'static> Into<Box<dyn RucError>>
-    for SimpleError<E>
+impl<E: Debug + Display + Send + 'static> From<SimpleError<E>>
+    for Box<dyn RucError>
 {
-    fn into(self) -> Box<dyn RucError> {
-        Box::new(self)
+    fn from(e: SimpleError<E>) -> Box<dyn RucError> {
+        Box::new(e)
     }
 }
 

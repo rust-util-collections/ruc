@@ -142,6 +142,7 @@ macro_rules! pd {
 }
 
 /// get current UTC-timestamp
+#[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
 macro_rules! ts {
     () => {{
@@ -152,7 +153,16 @@ macro_rules! ts {
     }};
 }
 
-/// get current native-local-datatime(+8)
+/// get current UTC-timestamp
+#[cfg(target_arch = "wasm32")]
+#[macro_export]
+macro_rules! ts {
+    () => {
+        0
+    };
+}
+
+/// get current DateTime
 #[macro_export]
 macro_rules! datetime {
     ($ts: expr) => {{
@@ -163,16 +173,17 @@ macro_rules! datetime {
     }};
 }
 
-/// generate a 'formated +8 datetime'
+/// generate a 'formated DateTime'
 #[cfg(not(target_arch = "wasm32"))]
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
     time::OffsetDateTime::from_unix_timestamp(ts).format("%F %T")
 }
 
+/// generate a 'formated DateTime'
 #[cfg(target_arch = "wasm32")]
 #[inline(always)]
-pub fn gen_datetime(ts: i64) -> String {
+pub fn gen_datetime(_ts: i64) -> String {
     "0000-00-00 00:00:00".to_owned()
 }
 
@@ -207,6 +218,7 @@ macro_rules! pnk {
 }
 
 /// Sleep in milliseconds
+#[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
 macro_rules! sleep_ms {
     ($n: expr) => {{
