@@ -11,6 +11,11 @@ use std::{
     fmt::{Debug, Display},
 };
 
+lazy_static! {
+    // avoid out-of-order printing
+    static ref LOG_LK: Mutex<()> = Mutex::new(());
+}
+
 /// Custom Result
 pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
 
@@ -106,18 +111,12 @@ pub trait RucError: Display + Debug + Send {
 
     /// Generate the log string with custom mode
     fn generate_log_custom(&self, debug_mode: bool) -> String {
-        lazy_static! {
-            // avoid out-of-order printing
-            static ref LOG_LK: Mutex<u64> = Mutex::new(0);
-        }
-
         #[cfg(not(feature = "ansi"))]
         #[inline(always)]
-        fn generate_log_header(idx: u64, ns: String, pid: u32) -> String {
+        fn generate_log_header(ns: String, pid: u32) -> String {
             format!(
-                "\n\x1b[31;01m# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]\x1b[00m",
+                "\n\x1b[31;01m# {time} [pid: {pid}] [pidns: {ns}]\x1b[00m",
                 time = crate::datetime!(),
-                n = idx,
                 pid = pid,
                 ns = ns,
             )
@@ -125,11 +124,10 @@ pub trait RucError: Display + Debug + Send {
 
         #[cfg(feature = "ansi")]
         #[inline(always)]
-        fn generate_log_header(idx: u64, ns: String, pid: u32) -> String {
+        fn generate_log_header(ns: String, pid: u32) -> String {
             format!(
-                "\n# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]",
+                "\n# {time} [pid: {pid}] [pidns: {ns}]",
                 time = crate::datetime!(),
-                n = idx,
                 pid = pid,
                 ns = ns,
             )
@@ -145,16 +143,13 @@ pub trait RucError: Display + Debug + Send {
         // or will cause a infinite loop
         let ns = get_pidns(pid).unwrap();
 
-        let mut logn = LOG_LK.lock().unwrap();
-        let mut res = generate_log_header(*logn, ns, pid);
+        let mut res = generate_log_header(ns, pid);
 
         if debug_mode {
-            res.push_str(&format!(" {:?}", self));
+            res.push_str(&format!(" {:#?}", self));
         } else {
             res.push_str(&self.stringify_chain());
         }
-
-        *logn += 1;
 
         res
     }
@@ -162,13 +157,17 @@ pub trait RucError: Display + Debug + Send {
     /// Print log
     #[inline(always)]
     fn print(&self) {
-        eprintln!("{}", self);
+        if LOG_LK.lock().is_ok() {
+            eprintln!("{}", self);
+        }
     }
 
     /// Print log in `rust debug` format
     #[inline(always)]
     fn print_debug(&self) {
-        eprintln!("{}", self.generate_log_debug());
+        if LOG_LK.lock().is_ok() {
+            eprintln!("{}", self.generate_log_debug());
+        }
     }
 }
 

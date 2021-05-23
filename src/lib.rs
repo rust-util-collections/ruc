@@ -250,7 +250,7 @@ mod tests {
         struct CustomErr(i32);
 
         let l1 = || -> Result<()> { Err(eg!("The final error message!")) };
-        let l2 = || -> Result<()> { l1().c(d!()) };
+        let l2 = || -> Result<()> { l1().c(d!()).or_else(|e| l1().c(d!(e))) };
         let l3 = || -> Result<()> { l2().c(d!("A custom message!")) };
         let l4 = || -> Result<()> { l3().c(d!("ERR_UNKNOWN")) };
         let l5 = || -> Result<()> { l4().c(d!(@CustomErr(-1))) };
