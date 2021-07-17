@@ -93,10 +93,16 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! info {
     ($ops: expr) => {{
-        $ops.c($crate::d!()).map_err(|e| e.print())
+        $ops.c($crate::d!()).map_err(|e| {
+            e.print();
+            e
+        })
     }};
     ($ops: expr, $msg: expr) => {{
-        $ops.c($crate::d!($msg)).map_err(|e| e.print())
+        $ops.c($crate::d!($msg)).map_err(|e| {
+            e.print();
+            e
+        })
     }};
 }
 
