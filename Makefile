@@ -11,8 +11,8 @@ release:
 	cargo build --release
 
 test:
-	cargo test -- --nocapture --test-threads=1
-	cargo test --no-default-features=false -- --nocapture --test-threads=1
+	cargo test --release -- --nocapture --test-threads=1
+	cargo test --release --no-default-features -- --nocapture --test-threads=1
 
 fmt:
 	@ cargo fmt

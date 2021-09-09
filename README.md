@@ -1,3 +1,5 @@
+![](https://tokei.rs/b1/github/FindoraNetwork/RUC)
+
 # RUC
 
 Rust Util Collection, a simple and friendly `error-chain`, with many useful utils as an addition.
@@ -36,59 +38,67 @@ fn will_panic() {
 #### nocolor (features = "ansi")
 
 ```
-# 2021-02-24 9:31:12 [idx: 0] [pid: 11843] [pidns: 4026531836]
-Error:
+# 2021-09-09 9:23:56 [pid: 20837] [pidns: 4026531836]
+ERROR: ...
 |-- file: src/lib.rs
-|-- line: 355
+|-- line: 270
 `-- column: 9
-Caused By: CustomErr(-1)
+Caused By: ...
 |-- file: src/lib.rs
-|-- line: 353
-`-- column: 44
-    Caused By: ERR_UNKNOWN
+|-- line: 264
+`-- column: 16
+    Caused By: CustomErr(-1)
     |-- file: src/lib.rs
-    |-- line: 352
+    |-- line: 262
     `-- column: 44
-        Caused By: A custom message!
+        Caused By: ERR_UNKNOWN
         |-- file: src/lib.rs
-        |-- line: 351
+        |-- line: 261
         `-- column: 44
-            Caused By:
+            Caused By: A custom message!
             |-- file: src/lib.rs
-            |-- line: 350
+            |-- line: 260
             `-- column: 44
-                Caused By: The final error message!
+                Caused By: ...
                 |-- file: src/lib.rs
-                |-- line: 349
-                `-- column: 41
+                |-- line: 259
+                `-- column: 69
+                    Caused By: The final error message!
+                    |-- file: src/lib.rs
+                    |-- line: 258
+                    `-- column: 41
 ```
 
 #### colorful
 
 ```
-# 2021-02-24 9:31:13 [idx: 0] [pid: 12058] [pidns: 4026531836]
-Error:
+# 2021-09-09 9:23:57 [pid: 20909] [pidns: 4026531836]
+ERROR: ...
 ├── file: src/lib.rs
-├── line: 355
+├── line: 270
 └── column: 9
-Caused By: CustomErr(-1)
+Caused By: ...
 ├── file: src/lib.rs
-├── line: 353
-└── column: 44
-    Caused By: ERR_UNKNOWN
+├── line: 264
+└── column: 16
+    Caused By: CustomErr(-1)
     ├── file: src/lib.rs
-    ├── line: 352
+    ├── line: 262
     └── column: 44
-        Caused By: A custom message!
+        Caused By: ERR_UNKNOWN
         ├── file: src/lib.rs
-        ├── line: 351
+        ├── line: 261
         └── column: 44
-            Caused By:
+            Caused By: A custom message!
             ├── file: src/lib.rs
-            ├── line: 350
+            ├── line: 260
             └── column: 44
-                Caused By: The final error message!
+                Caused By: ...
                 ├── file: src/lib.rs
-                ├── line: 349
-                └── column: 41
+                ├── line: 259
+                └── column: 69
+                    Caused By: The final error message!
+                    ├── file: src/lib.rs
+                    ├── line: 258
+                    └── column: 41
 ```

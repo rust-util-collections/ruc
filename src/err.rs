@@ -64,8 +64,8 @@ pub trait RucError: Display + Debug + Send {
     }
 
     /// generate the final error msg
-    fn stringify_chain(&self) -> String {
-        let mut res = "\nError: ".to_owned();
+    fn stringify_chain(&self, prefix: Option<&str>) -> String {
+        let mut res = format!("\n{}: ", prefix.unwrap_or("ERROR"));
         res.push_str(&self.get_top_error());
         let mut e = self.cause();
         let mut indent_num = 0;
@@ -86,7 +86,7 @@ pub trait RucError: Display + Debug + Send {
     /// Panic after printing `error_chain`
     #[inline(always)]
     fn print_die(&self) -> ! {
-        self.print();
+        self.print(None);
         panic!();
     }
 
@@ -99,18 +99,22 @@ pub trait RucError: Display + Debug + Send {
 
     /// Generate the log string
     #[inline(always)]
-    fn generate_log(&self) -> String {
-        self.generate_log_custom(false)
+    fn generate_log(&self, prefix: Option<&str>) -> String {
+        self.generate_log_custom(false, prefix)
     }
 
     /// Generate log in the original `rust debug` format
     #[inline(always)]
     fn generate_log_debug(&self) -> String {
-        self.generate_log_custom(true)
+        self.generate_log_custom(true, None)
     }
 
     /// Generate the log string with custom mode
-    fn generate_log_custom(&self, debug_mode: bool) -> String {
+    fn generate_log_custom(
+        &self,
+        debug_mode: bool,
+        prefix: Option<&str>,
+    ) -> String {
         #[cfg(not(feature = "ansi"))]
         #[inline(always)]
         fn generate_log_header(ns: String, pid: u32) -> String {
@@ -148,7 +152,7 @@ pub trait RucError: Display + Debug + Send {
         if debug_mode {
             res.push_str(&format!(" {:#?}", self));
         } else {
-            res.push_str(&self.stringify_chain());
+            res.push_str(&self.stringify_chain(prefix));
         }
 
         res
@@ -156,9 +160,9 @@ pub trait RucError: Display + Debug + Send {
 
     /// Print log
     #[inline(always)]
-    fn print(&self) {
+    fn print(&self, prefix: Option<&str>) {
         if LOG_LK.lock().is_ok() {
-            eprintln!("{}", self);
+            eprintln!("{}", self.generate_log(prefix));
         }
     }
 
@@ -225,7 +229,7 @@ impl<E: Debug + Display + Send + 'static> SimpleError<E> {
 
 impl<E: Debug + Display + Send + 'static> Display for SimpleError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.generate_log())
+        write!(f, "{}", self.generate_log(None))
     }
 }
 
@@ -361,7 +365,7 @@ mod test {
                 .c(SimpleMsg::new("dog", "/tmp/xx.rs", 2, 20))
                 .c(SimpleMsg::new("pig", "/tmp/xx.rs", 3, 30))
                 .unwrap_err()
-                .stringify_chain()
+                .stringify_chain(None)
         );
 
         let e1: Box<dyn RucError> =
