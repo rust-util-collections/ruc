@@ -1,14 +1,14 @@
 [package]
 name = "ruc"
-version = "0.6.1"
-authors = ["FanHui <kt71@qq.com>"]
+version = "0.6.2"
+authors = ["FindoraNetwork"]
 edition = "2018"
 description = "Rust Util Collection, include a friendly `error-chain` and many other utils."
 keywords = ["error", "error-chain"]
 categories = ["development-tools::debugging"]
 license = "MIT"
-homepage = "https://gitee.com/kt10/ruc"
-repository = "https://gitee.com/kt10/ruc.git"
+homepage = "https://github.com/FindoraNetwork/ruc"
+repository = "https://github.com/FindoraNetwork/ruc.git"
 
 [dependencies]
 lazy_static = "1.4.0"
