@@ -25,7 +25,14 @@
 #![deny(warnings)]
 #![warn(missing_docs, unused_import_braces, unused_extern_crates)]
 
+#[cfg(feature = "cmd")]
+pub mod cmd;
 pub mod err;
+#[cfg(feature = "uau")]
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(target_os = "linux")]
+pub mod uau;
+
 pub use err::*;
 
 /// map operations

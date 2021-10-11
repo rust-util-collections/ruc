@@ -1,4 +1,7 @@
-![](https://tokei.rs/b1/github/FindoraNetwork/RUC)
+![](https://tokei.rs/b1/github/FindoraNetwork/ruc)
+![GitHub top language](https://img.shields.io/github/languages/top/FindoraNetwork/ruc)
+![GitHub issues](https://img.shields.io/github/issues-raw/FindoraNetwork/ruc)
+![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/FindoraNetwork/ruc)
 
 # RUC
 
