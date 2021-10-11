@@ -25,7 +25,14 @@
 #![deny(warnings)]
 #![warn(missing_docs, unused_import_braces, unused_extern_crates)]
 
+#[cfg(feature = "cmd")]
+pub mod cmd;
 pub mod err;
+#[cfg(feature = "uau")]
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(target_os = "linux")]
+pub mod uau;
+
 pub use err::*;
 
 /// map operations
@@ -93,10 +100,16 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! info {
     ($ops: expr) => {{
-        $ops.c($crate::d!()).map_err(|e| e.print(e))
+        $ops.c($crate::d!()).map_err(|e| {
+            e.print(Some("INFO"));
+            e
+        })
     }};
     ($ops: expr, $msg: expr) => {{
-        $ops.c($crate::d!($msg)).map_err(|e| e.print())
+        $ops.c($crate::d!($msg)).map_err(|e| {
+            e.print(Some("INFO"));
+            e
+        })
     }};
 }
 
@@ -142,6 +155,7 @@ macro_rules! pd {
 }
 
 /// get current UTC-timestamp
+#[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
 macro_rules! ts {
     () => {{
@@ -152,7 +166,16 @@ macro_rules! ts {
     }};
 }
 
-/// get current native-local-datatime(+8)
+/// get current UTC-timestamp
+#[cfg(target_arch = "wasm32")]
+#[macro_export]
+macro_rules! ts {
+    () => {
+        0
+    };
+}
+
+/// get current DateTime
 #[macro_export]
 macro_rules! datetime {
     ($ts: expr) => {{
@@ -163,10 +186,18 @@ macro_rules! datetime {
     }};
 }
 
-/// generate a 'formated +8 datetime'
+/// generate a 'formated DateTime'
+#[cfg(not(target_arch = "wasm32"))]
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
     time::OffsetDateTime::from_unix_timestamp(ts).format("%F %T")
+}
+
+/// generate a 'formated DateTime'
+#[cfg(target_arch = "wasm32")]
+#[inline(always)]
+pub fn gen_datetime(_ts: i64) -> String {
+    "0000-00-00 00:00:00".to_owned()
 }
 
 /// Just a panic
@@ -200,6 +231,7 @@ macro_rules! pnk {
 }
 
 /// Sleep in milliseconds
+#[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
 macro_rules! sleep_ms {
     ($n: expr) => {{
@@ -231,7 +263,7 @@ mod tests {
         struct CustomErr(i32);
 
         let l1 = || -> Result<()> { Err(eg!("The final error message!")) };
-        let l2 = || -> Result<()> { l1().c(d!()) };
+        let l2 = || -> Result<()> { l1().c(d!()).or_else(|e| l1().c(d!(e))) };
         let l3 = || -> Result<()> { l2().c(d!("A custom message!")) };
         let l4 = || -> Result<()> { l3().c(d!("ERR_UNKNOWN")) };
         let l5 = || -> Result<()> { l4().c(d!(@CustomErr(-1))) };
@@ -252,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn t_map() {
+    fn t_macro() {
         let s1 = map! {1 => 2, 2 => 4};
         let s2 = map! {B 1 => 2, 2 => 4};
         assert_eq!(s1.len(), s2.len());
@@ -260,5 +292,12 @@ mod tests {
             assert_eq!(1 + idx, k);
             assert_eq!(2 * k, v);
         }
+
+        let _ = info!(Err::<u8, _>(eg!()));
+        omit!(Err::<u8, _>(eg!()));
+        info_omit!(Err::<u8, _>(eg!()));
+        pd!(ts!());
+
+        sleep_ms!(1);
     }
 }

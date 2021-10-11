@@ -11,6 +11,11 @@ use std::{
     fmt::{Debug, Display},
 };
 
+lazy_static! {
+    // avoid out-of-order printing
+    static ref LOG_LK: Mutex<()> = Mutex::new(());
+}
+
 /// Custom Result
 pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
 
@@ -59,8 +64,8 @@ pub trait RucError: Display + Debug + Send {
     }
 
     /// generate the final error msg
-    fn stringify_chain(&self) -> String {
-        let mut res = "\nError: ".to_owned();
+    fn stringify_chain(&self, prefix: Option<&str>) -> String {
+        let mut res = format!("\n{}: ", prefix.unwrap_or("ERROR"));
         res.push_str(&self.get_top_error());
         let mut e = self.cause();
         let mut indent_num = 0;
@@ -81,7 +86,7 @@ pub trait RucError: Display + Debug + Send {
     /// Panic after printing `error_chain`
     #[inline(always)]
     fn print_die(&self) -> ! {
-        self.print();
+        self.print(None);
         panic!();
     }
 
@@ -94,30 +99,28 @@ pub trait RucError: Display + Debug + Send {
 
     /// Generate the log string
     #[inline(always)]
-    fn generate_log(&self) -> String {
-        self.generate_log_custom(false)
+    fn generate_log(&self, prefix: Option<&str>) -> String {
+        self.generate_log_custom(false, prefix)
     }
 
     /// Generate log in the original `rust debug` format
     #[inline(always)]
     fn generate_log_debug(&self) -> String {
-        self.generate_log_custom(true)
+        self.generate_log_custom(true, None)
     }
 
     /// Generate the log string with custom mode
-    fn generate_log_custom(&self, debug_mode: bool) -> String {
-        lazy_static! {
-            // avoid out-of-order printing
-            static ref LOG_LK: Mutex<u64> = Mutex::new(0);
-        }
-
+    fn generate_log_custom(
+        &self,
+        debug_mode: bool,
+        prefix: Option<&str>,
+    ) -> String {
         #[cfg(not(feature = "ansi"))]
         #[inline(always)]
-        fn generate_log_header(idx: u64, ns: String, pid: u32) -> String {
+        fn generate_log_header(ns: String, pid: u32) -> String {
             format!(
-                "\n\x1b[31;01m# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]\x1b[00m",
+                "\n\x1b[31;01m# {time} [pid: {pid}] [pidns: {ns}]\x1b[00m",
                 time = crate::datetime!(),
-                n = idx,
                 pid = pid,
                 ns = ns,
             )
@@ -125,46 +128,50 @@ pub trait RucError: Display + Debug + Send {
 
         #[cfg(feature = "ansi")]
         #[inline(always)]
-        fn generate_log_header(idx: u64, ns: String, pid: u32) -> String {
+        fn generate_log_header(ns: String, pid: u32) -> String {
             format!(
-                "\n# {time} [idx: {n}] [pid: {pid}] [pidns: {ns}]",
+                "\n# {time} [pid: {pid}] [pidns: {ns}]",
                 time = crate::datetime!(),
-                n = idx,
                 pid = pid,
                 ns = ns,
             )
         }
 
+        #[cfg(target_arch = "wasm32")]
+        let pid = 0;
+
+        #[cfg(not(target_arch = "wasm32"))]
         let pid = std::process::id();
 
         // can not call `p` in the inner,
         // or will cause a infinite loop
         let ns = get_pidns(pid).unwrap();
 
-        let mut logn = LOG_LK.lock().unwrap();
-        let mut res = generate_log_header(*logn, ns, pid);
+        let mut res = generate_log_header(ns, pid);
 
         if debug_mode {
-            res.push_str(&format!(" {:?}", self));
+            res.push_str(&format!(" {:#?}", self));
         } else {
-            res.push_str(&self.stringify_chain());
+            res.push_str(&self.stringify_chain(prefix));
         }
-
-        *logn += 1;
 
         res
     }
 
     /// Print log
     #[inline(always)]
-    fn print(&self) {
-        eprintln!("{}", self);
+    fn print(&self, prefix: Option<&str>) {
+        if LOG_LK.lock().is_ok() {
+            eprintln!("{}", self.generate_log(prefix));
+        }
     }
 
     /// Print log in `rust debug` format
     #[inline(always)]
     fn print_debug(&self) {
-        eprintln!("{}", self.generate_log_debug());
+        if LOG_LK.lock().is_ok() {
+            eprintln!("{}", self.generate_log_debug());
+        }
     }
 }
 
@@ -222,15 +229,15 @@ impl<E: Debug + Display + Send + 'static> SimpleError<E> {
 
 impl<E: Debug + Display + Send + 'static> Display for SimpleError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.generate_log())
+        write!(f, "{}", self.generate_log(None))
     }
 }
 
-impl<E: Debug + Display + Send + 'static> Into<Box<dyn RucError>>
-    for SimpleError<E>
+impl<E: Debug + Display + Send + 'static> From<SimpleError<E>>
+    for Box<dyn RucError>
 {
-    fn into(self) -> Box<dyn RucError> {
-        Box::new(self)
+    fn from(e: SimpleError<E>) -> Box<dyn RucError> {
+        Box::new(e)
     }
 }
 
@@ -358,7 +365,7 @@ mod test {
                 .c(SimpleMsg::new("dog", "/tmp/xx.rs", 2, 20))
                 .c(SimpleMsg::new("pig", "/tmp/xx.rs", 3, 30))
                 .unwrap_err()
-                .stringify_chain()
+                .stringify_chain(None)
         );
 
         let e1: Box<dyn RucError> =
