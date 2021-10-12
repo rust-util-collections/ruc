@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "0.6.3"
+version = "0.6.4"
 authors = ["FindoraNetwork"]
 edition = "2018"
 description = "Rust Util Collection, include a friendly `error-chain` and many other utils."

@@ -21,13 +21,15 @@ use nix::{
     sys::{
         socket::{
             bind, recvfrom, sendto, setsockopt, socket, sockopt,
-            AddressFamily, MsgFlags, SockAddr, SockFlag, SockType, UnixAddr,
+            AddressFamily, MsgFlags, SockFlag, SockType, UnixAddr,
         },
         time::{TimeVal, TimeValLike},
     },
     unistd::close,
 };
 use std::os::unix::io::RawFd;
+
+pub use nix::sys::socket::SockAddr;
 
 /// Wrap raw data
 pub struct UauSock {
@@ -178,6 +180,11 @@ impl UauSock {
             Err(e) => Err(eg!(e)),
             _ => Err(eg!("peer address is unknown")),
         }
+    }
+
+    /// Try to convert a user-given addr to SockAddr
+    pub fn addr_to_sock(addr: &[u8]) -> Result<SockAddr> {
+        UnixAddr::new_abstract(addr).c(d!()).map(SockAddr::Unix)
     }
 }
 
