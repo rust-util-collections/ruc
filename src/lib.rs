@@ -254,6 +254,40 @@ macro_rules! eg {
     };
 }
 
+/// find the max value of multi values
+#[macro_export]
+macro_rules! max {
+    ($v1: expr, $v2: expr) => {{
+        alt!($v1 > $v2, { $v1 }, { $v2 })
+    }};
+    ($v1: expr, $v2:expr, $($v: expr),+ $(,)*) => {{
+        let len = 2 + [$(&$v),*].len();
+        let mut m = Vec::with_capacity(len);
+        m.push($v1);
+        m.push($v2);
+        $(m.push($v);)*
+        m.sort_unstable();
+        m[len - 1]
+    }};
+}
+
+/// find the min value of multi values
+#[macro_export]
+macro_rules! min {
+    ($v1: expr, $v2: expr) => {{
+        alt!($v1 > $v2, { $v2 }, { $v1 })
+    }};
+    ($v1: expr, $v2:expr, $($v: expr),+ $(,)*) => {{
+        let len = 2 + [$(&$v),*].len();
+        let mut m = Vec::with_capacity(len);
+        m.push($v1);
+        m.push($v2);
+        $(m.push($v);)*
+        m.sort_unstable();
+        m[0]
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -299,5 +333,13 @@ mod tests {
         pd!(ts!());
 
         sleep_ms!(1);
+    }
+
+    #[test]
+    fn t_max_min() {
+        assert_eq!(10, max!(1, 10));
+        assert_eq!(10, max!(1, 2, 3, 4, 5, 10));
+        assert_eq!(1, min!(1, 10));
+        assert_eq!(1, min!(1, 2, 3, 4, 5, 10));
     }
 }
