@@ -3,7 +3,7 @@
 //!
 //! All errors will be converted to RucError.
 //!
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use std::{
     collections::HashSet,
@@ -11,10 +11,8 @@ use std::{
     fmt::{Debug, Display},
 };
 
-lazy_static! {
-    // avoid out-of-order printing
-    static ref LOG_LK: Mutex<()> = Mutex::new(());
-}
+// avoid out-of-order printing
+static LOG_LK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 /// Custom Result
 pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
