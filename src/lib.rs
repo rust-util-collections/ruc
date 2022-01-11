@@ -135,11 +135,15 @@ macro_rules! info_omit {
 /// print debug-info, eg: modular and file path, line number ...
 #[macro_export]
 macro_rules! d {
+    ($fmt: expr, $($arg:tt)*) => {{
+        let err = format!("{}", format_args!($fmt, $($arg)*));
+        $crate::err::SimpleMsg::new(err, file!(), line!(), column!())
+    }};
     ($err: expr) => {{
-        $crate::err::SimpleMsg::new($err, file!(), line!(), column!())
+        $crate::d!("{}", $err)
     }};
     (@$err: expr) => {{
-        $crate::d!(format!("{:?}", $err))
+        $crate::d!("{:?}", $err)
     }};
     () => {{
         $crate::d!("...")
@@ -242,12 +246,15 @@ macro_rules! sleep_ms {
 /// Generate error with debug info
 #[macro_export]
 macro_rules! eg {
-    ($msg: expr) => {{
-        Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
+    ($fmt: expr, $($arg:tt)*) => {{
+        Box::new($crate::err::SimpleError::new($crate::d!($fmt, $($arg)*), None))
             as Box<dyn $crate::err::RucError>
     }};
+    ($err: expr) => {{
+        $crate::eg!("{}", $err)
+    }};
     (@$msg: expr) => {
-        $crate::eg!(format!("{:#?}", $msg))
+        $crate::eg!("{:#?}", $msg)
     };
     () => {
         $crate::eg!("...")
