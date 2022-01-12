@@ -1,17 +1,17 @@
 [package]
 name = "ruc"
-version = "0.6.5"
-authors = ["FindoraNetwork"]
-edition = "2018"
-description = "Rust Util Collection, include a friendly `error-chain` and many other utils."
+version = "1.0.0"
+authors = ["ccmlm"]
+edition = "2021"
+description = "Rust Util Collection"
 keywords = ["error", "error-chain"]
 categories = ["development-tools::debugging"]
 license = "MIT"
-homepage = "https://github.com/FindoraNetwork/ruc"
-repository = "https://github.com/FindoraNetwork/ruc.git"
+homepage = "https://github.com/ccmlm/RUC"
+repository = "https://github.com/ccmlm/RUC.git"
 
 [dependencies]
-lazy_static = "1.4.0"
+once_cell = "1.9.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 nix = { version = "0.22.1", optional = true }

@@ -135,11 +135,15 @@ macro_rules! info_omit {
 /// print debug-info, eg: modular and file path, line number ...
 #[macro_export]
 macro_rules! d {
+    ($fmt: expr, $($arg:tt)*) => {{
+        let err = format!("{}", format_args!($fmt, $($arg)*));
+        $crate::err::SimpleMsg::new(err, file!(), line!(), column!())
+    }};
     ($err: expr) => {{
-        $crate::err::SimpleMsg::new($err, file!(), line!(), column!())
+        $crate::d!("{}", $err)
     }};
     (@$err: expr) => {{
-        $crate::d!(format!("{:?}", $err))
+        $crate::d!("{:?}", $err)
     }};
     () => {{
         $crate::d!("...")
@@ -242,16 +246,53 @@ macro_rules! sleep_ms {
 /// Generate error with debug info
 #[macro_export]
 macro_rules! eg {
-    ($msg: expr) => {{
-        Box::new($crate::err::SimpleError::new($crate::d!($msg), None))
+    ($fmt: expr, $($arg:tt)*) => {{
+        Box::new($crate::err::SimpleError::new($crate::d!($fmt, $($arg)*), None))
             as Box<dyn $crate::err::RucError>
     }};
+    ($err: expr) => {{
+        $crate::eg!("{}", $err)
+    }};
     (@$msg: expr) => {
-        $crate::eg!(format!("{:#?}", $msg))
+        $crate::eg!("{:#?}", $msg)
     };
     () => {
         $crate::eg!("...")
     };
+}
+
+/// find the max value of multi values
+#[macro_export]
+macro_rules! max {
+    ($v1: expr, $v2: expr) => {{
+        alt!($v1 > $v2, { $v1 }, { $v2 })
+    }};
+    ($v1: expr, $v2:expr, $($v: expr),+ $(,)*) => {{
+        let len = 2 + [$(&$v),*].len();
+        let mut m = Vec::with_capacity(len);
+        m.push($v1);
+        m.push($v2);
+        $(m.push($v);)*
+        m.sort_unstable();
+        m[len - 1]
+    }};
+}
+
+/// find the min value of multi values
+#[macro_export]
+macro_rules! min {
+    ($v1: expr, $v2: expr) => {{
+        alt!($v1 > $v2, { $v2 }, { $v1 })
+    }};
+    ($v1: expr, $v2:expr, $($v: expr),+ $(,)*) => {{
+        let len = 2 + [$(&$v),*].len();
+        let mut m = Vec::with_capacity(len);
+        m.push($v1);
+        m.push($v2);
+        $(m.push($v);)*
+        m.sort_unstable();
+        m[0]
+    }};
 }
 
 #[cfg(test)]
@@ -299,5 +340,13 @@ mod tests {
         pd!(ts!());
 
         sleep_ms!(1);
+    }
+
+    #[test]
+    fn t_max_min() {
+        assert_eq!(10, max!(1, 10));
+        assert_eq!(10, max!(1, 2, 3, 4, 5, 10));
+        assert_eq!(1, min!(1, 10));
+        assert_eq!(1, min!(1, 2, 3, 4, 5, 10));
     }
 }
