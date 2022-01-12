@@ -16,7 +16,7 @@ use std::{
 // avoid out-of-order printing
 static LOG_LK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
-/// "INFO" or "ERROR", if mismatch, default to :INFO"
+/// `INFO` or `ERROR`, if mismatch, default to `INFO`
 pub static LOG_LEVEL: Lazy<String> = Lazy::new(|| {
     if let Ok(l) = env::var("RUC_LOG_LEVEL") {
         if "ERROR" == l {
@@ -161,8 +161,7 @@ pub trait RucError: Display + Debug + Send {
         #[inline(always)]
         fn generate_log_header(ns: String, pid: u32) -> String {
             format!(
-                "{}\x1b[31;01m# {time} [pid: {pid}] [pidns: {ns}]\x1b[00m",
-                delimiter(),
+                "\n\x1b[31;01m# {time} [pid: {pid}] [pidns: {ns}]\x1b[00m",
                 time = crate::datetime!(),
                 pid = pid,
                 ns = ns,
@@ -173,8 +172,7 @@ pub trait RucError: Display + Debug + Send {
         #[inline(always)]
         fn generate_log_header(ns: String, pid: u32) -> String {
             format!(
-                "{}# {time} [pid: {pid}] [pidns: {ns}]",
-                delimiter(),
+                "\n# {time} [pid: {pid}] [pidns: {ns}]",
                 time = crate::datetime!(),
                 pid = pid,
                 ns = ns,

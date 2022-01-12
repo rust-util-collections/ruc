@@ -3,6 +3,17 @@
 //!
 //! A useful util-collections for Rust.
 //!
+//! ```no_compiling
+//! [features]
+//! default = ["ansi"]
+//! ansi = []
+//! compact = []
+//!
+//! rich = ["uau", "cmd"]
+//! uau = ["nix", "rand"]
+//! cmd = []
+//! ```
+//!
 //! ## Example
 //!
 //! ```rust
