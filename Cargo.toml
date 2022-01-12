@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "0.7.0"
+version = "1.0.0"
 authors = ["ccmlm"]
 edition = "2021"
 description = "Rust Util Collection"

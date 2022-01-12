@@ -6,6 +6,7 @@
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use std::{
+    any::{Any, TypeId},
     collections::HashSet,
     error::Error,
     fmt::{Debug, Display},
@@ -19,13 +20,40 @@ pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
 
 /// the major trait defination
 pub trait RucError: Display + Debug + Send {
+    /// type id of current error type
+    fn type_id(&self) -> TypeId;
+
+    /// type ids of errors of each level(from top to bottom).
+    fn type_ids(&self) -> Vec<TypeId> {
+        let mut res = vec![self.type_id()];
+        while let Some(c) = self.cause() {
+            res.push(c.type_id());
+        }
+        res
+    }
+
+    /// get the type of the lowest(bottom) error
+    fn lowest_type_id(&self) -> TypeId {
+        *self.type_ids().last().unwrap()
+    }
+
+    /// check the type of the lowest error
+    fn lowest_is_type(&self, e: &dyn Any) -> bool {
+        self.lowest_type_id() == e.type_id()
+    }
+
+    /// check if an error exists in the error chain
+    fn contains_type(&self, e: &dyn Any) -> bool {
+        self.type_ids().contains(&e.type_id())
+    }
+
     /// compare two object
-    fn eq(&self, another: &dyn RucError) -> bool {
+    fn msg_eq(&self, another: &dyn RucError) -> bool {
         self.get_lowest_msg() == another.get_lowest_msg()
     }
 
     /// check if any node from the error_chain matches the given error
-    fn eq_any(&self, another: &dyn RucError) -> bool {
+    fn msg_has_overloop(&self, another: &dyn RucError) -> bool {
         let mut b;
 
         let mut self_list = HashSet::new();
@@ -53,8 +81,12 @@ pub trait RucError: Display + Debug + Send {
     /// convert the error of lowest level to string
     fn get_lowest_msg(&self) -> String;
 
+    /// Get the original error object,
+    /// used to match its original type by `Any`.
+    fn get_lowest_err(&self) -> &dyn RucError;
+
     /// "error msg" + "debug info"
-    fn get_top_error(&self) -> String;
+    fn get_top_msg_with_dbginfo(&self) -> String;
 
     /// point to a error which caused current error
     fn cause(&self) -> Option<&dyn RucError> {
@@ -64,7 +96,7 @@ pub trait RucError: Display + Debug + Send {
     /// generate the final error msg
     fn stringify_chain(&self, prefix: Option<&str>) -> String {
         let mut res = format!("\n{}: ", prefix.unwrap_or("ERROR"));
-        res.push_str(&self.get_top_error());
+        res.push_str(&self.get_top_msg_with_dbginfo());
         let mut e = self.cause();
         let mut indent_num = 0;
         while let Some(c) = e {
@@ -74,7 +106,7 @@ pub trait RucError: Display + Debug + Send {
             });
             res.push_str(&prefix);
             res.push_str("Caused By: ");
-            res.push_str(&c.get_top_error().replace("\n", &prefix));
+            res.push_str(&c.get_top_msg_with_dbginfo().replace("\n", &prefix));
             indent_num += 1;
             e = c.cause();
         }
@@ -240,6 +272,10 @@ impl<E: Debug + Display + Send + 'static> From<SimpleError<E>>
 }
 
 impl<E: Debug + Display + Send + 'static> RucError for SimpleError<E> {
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<E>()
+    }
+
     /// get the top-level error message
     #[inline(always)]
     fn get_top_msg(&self) -> String {
@@ -256,8 +292,16 @@ impl<E: Debug + Display + Send + 'static> RucError for SimpleError<E> {
         }
     }
 
+    fn get_lowest_err(&self) -> &dyn RucError {
+        if let Some(next) = self.cause.as_ref() {
+            next.get_lowest_err()
+        } else {
+            self
+        }
+    }
+
     #[inline(always)]
-    fn get_top_error(&self) -> String {
+    fn get_top_msg_with_dbginfo(&self) -> String {
         self.msg.to_string()
     }
 
@@ -373,6 +417,9 @@ mod test {
             SimpleError::new(SimpleMsg::new("***", "/tmp/xx.rs", 9, 90), None)
                 .into();
 
-        assert!(e1.eq(e2.as_ref()));
+        assert!(e1.msg_eq(e2.as_ref()));
+        assert!(e1.lowest_is_type(&""));
+        assert!(e2.lowest_is_type(&""));
+        assert_eq!(e2.lowest_type_id(), TypeId::of::<&str>());
     }
 }
