@@ -8,12 +8,23 @@ use std::sync::Mutex;
 use std::{
     any::{Any, TypeId},
     collections::HashSet,
+    env,
     error::Error,
     fmt::{Debug, Display},
 };
 
 // avoid out-of-order printing
 static LOG_LK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
+/// "INFO" or "ERROR", if mismatch, default to :INFO"
+pub static LOG_LEVEL: Lazy<String> = Lazy::new(|| {
+    if let Ok(l) = env::var("RUC_LOG_LEVEL") {
+        if "ERROR" == l {
+            return "ERROR".to_owned();
+        }
+    }
+    "INFO".to_owned()
+});
 
 /// Custom Result
 pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
@@ -95,14 +106,15 @@ pub trait RucError: Display + Debug + Send {
 
     /// generate the final error msg
     fn stringify_chain(&self, prefix: Option<&str>) -> String {
-        let mut res = format!("\n{}: ", prefix.unwrap_or("ERROR"));
+        let mut res =
+            format!("{}{}: ", delimiter(), prefix.unwrap_or("ERROR"));
         res.push_str(&self.get_top_msg_with_dbginfo());
         let mut e = self.cause();
         let mut indent_num = 0;
         while let Some(c) = e {
-            let mut prefix = "\n".to_owned();
+            let mut prefix = delimiter().to_owned();
             (0..indent_num).for_each(|_| {
-                prefix.push_str("    ");
+                prefix.push_str(indent());
             });
             res.push_str(&prefix);
             res.push_str("Caused By: ");
@@ -149,7 +161,8 @@ pub trait RucError: Display + Debug + Send {
         #[inline(always)]
         fn generate_log_header(ns: String, pid: u32) -> String {
             format!(
-                "\n\x1b[31;01m# {time} [pid: {pid}] [pidns: {ns}]\x1b[00m",
+                "{}\x1b[31;01m# {time} [pid: {pid}] [pidns: {ns}]\x1b[00m",
+                delimiter(),
                 time = crate::datetime!(),
                 pid = pid,
                 ns = ns,
@@ -160,7 +173,8 @@ pub trait RucError: Display + Debug + Send {
         #[inline(always)]
         fn generate_log_header(ns: String, pid: u32) -> String {
             format!(
-                "\n# {time} [pid: {pid}] [pidns: {ns}]",
+                "{}# {time} [pid: {pid}] [pidns: {ns}]",
+                delimiter(),
                 time = crate::datetime!(),
                 pid = pid,
                 ns = ns,
@@ -342,16 +356,30 @@ impl<E: Debug + Display + Send + 'static> Display for SimpleMsg<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}\n|-- file: {}\n|-- line: {}\n`-- column: {}",
-            self.err, self.file, self.line, self.column
+            "{0}{4}{5}file: {1}{4}{5}line: {2}{4}{6}column: {3}",
+            self.err,
+            self.file,
+            self.line,
+            self.column,
+            delimiter(),
+            pretty()[0],
+            pretty()[1]
         )
     }
 
     #[cfg(not(feature = "ansi"))]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,
-               "\x1b[01m{}\x1b[00m\n├── \x1b[01mfile:\x1b[00m {}\n├── \x1b[01mline:\x1b[00m {}\n└── \x1b[01mcolumn:\x1b[00m {}",
-               self.err, self.file, self.line, self.column)
+        write!(
+            f,
+            "\x1b[01m{0}\x1b[00m{4}{5}\x1b[01mfile:\x1b[00m {1}{4}{5}\x1b[01mline:\x1b[00m {2}{4}{6}\x1b[01mcolumn:\x1b[00m {3}",
+            self.err,
+            self.file,
+            self.line,
+            self.column,
+            delimiter(),
+            pretty()[0],
+            pretty()[1]
+        )
     }
 }
 
@@ -381,6 +409,41 @@ fn get_pidns(pid: u32) -> Result<String> {
 #[allow(clippy::unnecessary_wraps)]
 fn get_pidns(_pid: u32) -> Result<String> {
     Ok("NULL".to_owned())
+}
+
+#[cfg(not(feature = "compact"))]
+const fn delimiter() -> &'static str {
+    "\n"
+}
+
+#[cfg(feature = "compact")]
+const fn delimiter() -> &'static str {
+    " 》"
+}
+
+#[cfg(not(feature = "compact"))]
+const fn indent() -> &'static str {
+    "    "
+}
+
+#[cfg(feature = "compact")]
+const fn indent() -> &'static str {
+    ""
+}
+
+#[cfg(all(not(feature = "compact"), feature = "ansi"))]
+const fn pretty() -> [&'static str; 2] {
+    ["|--", "`--"]
+}
+
+#[cfg(all(not(feature = "compact"), not(feature = "ansi")))]
+const fn pretty() -> [&'static str; 2] {
+    ["├──", "└──"]
+}
+
+#[cfg(feature = "compact")]
+const fn pretty() -> [&'static str; 2] {
+    ["", ""]
 }
 
 #[cfg(test)]

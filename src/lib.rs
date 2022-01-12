@@ -101,13 +101,17 @@ macro_rules! alt {
 macro_rules! info {
     ($ops: expr) => {{
         $ops.c($crate::d!()).map_err(|e| {
-            e.print(Some("INFO"));
+            if "INFO" == $crate::LOG_LEVEL.as_str() {
+                e.print(Some("INFO"));
+            }
             e
         })
     }};
     ($ops: expr, $msg: expr) => {{
         $ops.c($crate::d!($msg)).map_err(|e| {
-            e.print(Some("INFO"));
+            if "INFO" == $crate::LOG_LEVEL.as_str() {
+                e.print(Some("INFO"));
+            }
             e
         })
     }};
@@ -318,11 +322,11 @@ mod tests {
         pnk!(t_display_style_inner());
     }
 
-    #[test]
-    #[should_panic]
-    fn t_display_style_debug() {
-        pnk!(@t_display_style_inner());
-    }
+    // #[test]
+    // #[should_panic]
+    // fn t_display_style_debug() {
+    //     pnk!(@t_display_style_inner());
+    // }
 
     #[test]
     fn t_macro() {
