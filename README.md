@@ -9,6 +9,17 @@ Rust Util Collection, a simple and friendly `error-chain`, with many useful util
 
 The painful experience of using `error-chain` gave birth to this project. It can adapt to almost all scenes without any special implementation.
 
+```
+[features]
+default = ["ansi"]
+ansi = []
+compact = []
+
+rich = ["uau", "cmd"]
+uau = ["nix", "rand"]
+cmd = []
+```
+
 ## Documents
 
 ```shell
@@ -38,7 +49,9 @@ fn will_panic() {
 
 ## OutPut Sample
 
-#### nocolor (features = "ansi")
+#### Non-Color View
+
+> features = ["ansi"]
 
 ```
 # 2021-09-09 9:23:56 [pid: 20837] [pidns: 4026531836]
@@ -72,7 +85,7 @@ Caused By: ...
                     `-- column: 41
 ```
 
-#### colorful
+#### Colorful View
 
 ```
 # 2021-09-09 9:23:57 [pid: 20909] [pidns: 4026531836]
@@ -104,4 +117,12 @@ Caused By: ...
                     ├── file: src/lib.rs
                     ├── line: 258
                     └── column: 41
+```
+
+#### Compact View
+
+> features = ["compact"]
+
+```
+# 2022-01-12 5:56:13 [pid: 73002] [pidns: NULL] 》INFO: ... 》file: src/lib.rs 》line: 354 》column: 9 》Caused By: ... 》file: src/lib.rs 》line: 354 》column: 33
 ```
