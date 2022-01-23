@@ -209,7 +209,12 @@ macro_rules! datetime {
 #[cfg(not(target_arch = "wasm32"))]
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
-    time::OffsetDateTime::from_unix_timestamp(ts).format("%F %T")
+    let format = time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]:[offset_second]").unwrap();
+    time::OffsetDateTime::from_unix_timestamp(ts)
+        .unwrap()
+        .to_offset(time::UtcOffset::from_hms(8, 0, 0).unwrap())
+        .format(&format)
+        .unwrap()
 }
 
 /// generate a 'formated DateTime'
