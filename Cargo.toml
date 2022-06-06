@@ -1,14 +1,14 @@
 [package]
 name = "ruc"
-version = "1.0.7"
-authors = ["ccmlm","fanhui.x@gmail.com"]
+version = "1.0.8"
+authors = ["rust-util-collections","fanhui.x@gmail.com"]
 edition = "2021"
-description = "Rust Util Collection"
+description = "Rust Util Collections"
 keywords = ["utils", "error-management"]
 categories = ["development-tools::debugging"]
 license = "MIT"
-homepage = "https://github.com/ccmlm/RUC"
-repository = "https://github.com/ccmlm/RUC.git"
+homepage = "https://github.com/rust-util-collections/RUC"
+repository = "https://github.com/rust-util-collections/RUC.git"
 
 [dependencies]
 once_cell = "1.10.0"
