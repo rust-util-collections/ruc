@@ -2,7 +2,7 @@
 [![Latest Version](https://img.shields.io/crates/v/RUC.svg)](https://crates.io/crates/RUC)
 [![Rust Documentation](https://img.shields.io/badge/api-rustdoc-blue.svg)](https://docs.rs/RUC)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ccmlm/RUC/Rust)
-![Minimum rustc version](https://img.shields.io/badge/rustc-1.59+-lightgray.svg)
+![Minimum rustc version](https://img.shields.io/badge/rustc-1.63+-lightgray.svg)
 
 # RUC
 

@@ -29,12 +29,10 @@ use nix::{
 };
 use std::os::unix::io::RawFd;
 
-pub use nix::sys::socket::SockAddr;
-
 /// Wrap raw data
 pub struct UauSock {
     fd: RawFd,
-    sa: SockAddr,
+    sa: UnixAddr,
 }
 
 impl Drop for UauSock {
@@ -70,7 +68,7 @@ impl UauSock {
             .c(d!())?;
         }
 
-        let sa = SockAddr::Unix(UnixAddr::new_abstract(addr).c(d!())?);
+        let sa = UnixAddr::new_abstract(addr).c(d!())?;
         bind(fd, &sa).c(d!())?;
 
         Ok(UauSock { fd, sa })
@@ -85,13 +83,13 @@ impl UauSock {
 
     /// Get the addr of UauSock
     #[inline(always)]
-    pub fn addr(&self) -> &SockAddr {
+    pub fn addr(&self) -> &UnixAddr {
         &self.sa
     }
 
     /// Send msg to another peer
     #[inline(always)]
-    pub fn send(&self, msg: &[u8], peeraddr: &SockAddr) -> Result<()> {
+    pub fn send(&self, msg: &[u8], peeraddr: &UnixAddr) -> Result<()> {
         sendto(self.fd, msg, peeraddr, MsgFlags::empty())
             .c(d!())
             .map(|_| ())
@@ -99,7 +97,7 @@ impl UauSock {
 
     /// Receive msg with a 512-bytes buffer
     #[inline(always)]
-    pub fn recv_64(&self) -> Result<(Vec<u8>, SockAddr)> {
+    pub fn recv_64(&self) -> Result<(Vec<u8>, UnixAddr)> {
         let mut buf = [0u8; 64];
         self.recv(&mut buf)
             .c(d!())
@@ -108,7 +106,7 @@ impl UauSock {
 
     /// Receive msg with a 512-bytes buffer
     #[inline(always)]
-    pub fn recv_128(&self) -> Result<(Vec<u8>, SockAddr)> {
+    pub fn recv_128(&self) -> Result<(Vec<u8>, UnixAddr)> {
         let mut buf = [0u8; 128];
         self.recv(&mut buf)
             .c(d!())
@@ -117,7 +115,7 @@ impl UauSock {
 
     /// Receive msg with a 512-bytes buffer
     #[inline(always)]
-    pub fn recv_256(&self) -> Result<(Vec<u8>, SockAddr)> {
+    pub fn recv_256(&self) -> Result<(Vec<u8>, UnixAddr)> {
         let mut buf = [0u8; 256];
         self.recv(&mut buf)
             .c(d!())
@@ -126,7 +124,7 @@ impl UauSock {
 
     /// Receive msg with a 512-bytes buffer
     #[inline(always)]
-    pub fn recv_512(&self) -> Result<(Vec<u8>, SockAddr)> {
+    pub fn recv_512(&self) -> Result<(Vec<u8>, UnixAddr)> {
         let mut buf = [0u8; 512];
         self.recv(&mut buf)
             .c(d!())
@@ -135,7 +133,7 @@ impl UauSock {
 
     /// Receive msg with a 512-bytes buffer
     #[inline(always)]
-    pub fn recv_1024(&self) -> Result<(Vec<u8>, SockAddr)> {
+    pub fn recv_1024(&self) -> Result<(Vec<u8>, UnixAddr)> {
         let mut buf = [0u8; 1024];
         self.recv(&mut buf)
             .c(d!())
@@ -174,17 +172,17 @@ impl UauSock {
 
     /// Receive msg with a given buffer
     #[inline(always)]
-    pub fn recv(&self, buf: &mut [u8]) -> Result<(usize, SockAddr)> {
-        match recvfrom(self.fd, buf) {
+    pub fn recv(&self, buf: &mut [u8]) -> Result<(usize, UnixAddr)> {
+        match recvfrom::<UnixAddr>(self.fd, buf) {
             Ok((n, Some(peer))) => Ok((n, peer)),
             Err(e) => Err(eg!(e)),
             _ => Err(eg!("peer address is unknown")),
         }
     }
 
-    /// Try to convert a user-given addr to SockAddr
-    pub fn addr_to_sock(addr: &[u8]) -> Result<SockAddr> {
-        UnixAddr::new_abstract(addr).c(d!()).map(SockAddr::Unix)
+    /// Try to convert a user-given addr to SockAddr(unix sock)
+    pub fn addr_to_sock(addr: &[u8]) -> Result<UnixAddr> {
+        UnixAddr::new_abstract(addr).c(d!())
     }
 }
 

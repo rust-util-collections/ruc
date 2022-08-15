@@ -4,17 +4,17 @@
 //! All errors will be converted to RucError.
 //!
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
 use std::{
     any::{Any, TypeId},
     collections::HashSet,
     env,
     error::Error,
-    fmt::{Debug, Display},
+    fmt::{Debug, Display, Write},
+    sync::Mutex,
 };
 
 // avoid out-of-order printing
-static LOG_LK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+static LOG_LK: Mutex<()> = Mutex::new(());
 
 /// `INFO` or `ERROR`, if mismatch, default to `INFO`
 pub static LOG_LEVEL: Lazy<String> = Lazy::new(|| {
@@ -118,7 +118,7 @@ pub trait RucError: Display + Debug + Send {
             });
             res.push_str(&prefix);
             res.push_str("Caused By: ");
-            res.push_str(&c.get_top_msg_with_dbginfo().replace("\n", &prefix));
+            res.push_str(&c.get_top_msg_with_dbginfo().replace('\n', &prefix));
             indent_num += 1;
             e = c.cause();
         }
@@ -192,7 +192,7 @@ pub trait RucError: Display + Debug + Send {
         let mut res = generate_log_header(ns, pid);
 
         if debug_mode {
-            res.push_str(&format!(" {:#?}", self));
+            write!(res, " {:#?}", self).unwrap();
         } else {
             res.push_str(&self.stringify_chain(prefix));
         }
