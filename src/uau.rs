@@ -95,7 +95,7 @@ impl UauSock {
             .map(|_| ())
     }
 
-    /// Receive msg with a 512-bytes buffer
+    /// Receive msg with a 64-bytes buffer
     #[inline(always)]
     pub fn recv_64(&self) -> Result<(Vec<u8>, UnixAddr)> {
         let mut buf = [0u8; 64];
@@ -104,7 +104,7 @@ impl UauSock {
             .map(|(n, peer)| (buf[..n].to_vec(), peer))
     }
 
-    /// Receive msg with a 512-bytes buffer
+    /// Receive msg with a 128-bytes buffer
     #[inline(always)]
     pub fn recv_128(&self) -> Result<(Vec<u8>, UnixAddr)> {
         let mut buf = [0u8; 128];
@@ -113,7 +113,7 @@ impl UauSock {
             .map(|(n, peer)| (buf[..n].to_vec(), peer))
     }
 
-    /// Receive msg with a 512-bytes buffer
+    /// Receive msg with a 256-bytes buffer
     #[inline(always)]
     pub fn recv_256(&self) -> Result<(Vec<u8>, UnixAddr)> {
         let mut buf = [0u8; 256];
@@ -131,7 +131,7 @@ impl UauSock {
             .map(|(n, peer)| (buf[..n].to_vec(), peer))
     }
 
-    /// Receive msg with a 512-bytes buffer
+    /// Receive msg with a 1024-bytes buffer
     #[inline(always)]
     pub fn recv_1024(&self) -> Result<(Vec<u8>, UnixAddr)> {
         let mut buf = [0u8; 1024];
@@ -140,19 +140,19 @@ impl UauSock {
             .map(|(n, peer)| (buf[..n].to_vec(), peer))
     }
 
-    /// Receive msg with a 512-bytes buffer
+    /// Receive msg with a 64-bytes buffer
     #[inline(always)]
     pub fn recvonly_64(&self) -> Result<Vec<u8>> {
         self.recv_64().map(|(b, _)| b)
     }
 
-    /// Receive msg with a 512-bytes buffer
+    /// Receive msg with a 128-bytes buffer
     #[inline(always)]
     pub fn recvonly_128(&self) -> Result<Vec<u8>> {
         self.recv_128().map(|(b, _)| b)
     }
 
-    /// Receive msg with a 512-bytes buffer
+    /// Receive msg with a 256-bytes buffer
     #[inline(always)]
     pub fn recvonly_256(&self) -> Result<Vec<u8>> {
         self.recv_256().map(|(b, _)| b)
@@ -164,7 +164,7 @@ impl UauSock {
         self.recv_512().map(|(b, _)| b)
     }
 
-    /// Receive msg with a 512-bytes buffer
+    /// Receive msg with a 1024-bytes buffer
     #[inline(always)]
     pub fn recvonly_1024(&self) -> Result<Vec<u8>> {
         self.recv_1024().map(|(b, _)| b)
