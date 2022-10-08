@@ -274,7 +274,7 @@ macro_rules! eg {
         $crate::eg!("{}", $err)
     }};
     (@$msg: expr) => {
-        $crate::eg!("{:#?}", $msg)
+        $crate::eg!("{:?}", $msg)
     };
     () => {
         $crate::eg!("...")
