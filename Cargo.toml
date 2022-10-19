@@ -1,28 +1,32 @@
 [package]
 name = "ruc"
-version = "2.0.1"
+version = "3.0.0"
 authors = ["rust-util-collections","fanhui.x@gmail.com"]
 edition = "2021"
 description = "Rust Util Collections"
 keywords = ["utils", "error-management"]
 categories = ["development-tools::debugging"]
 license = "MIT"
-homepage = "https://github.com/rust-util-collections/RUC"
-repository = "https://github.com/rust-util-collections/RUC.git"
+homepage = "https://github.com/rust-util-collections/ruc"
+repository = "https://github.com/rust-util-collections/ruc.git"
 
 [dependencies]
 once_cell = "1.13"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+time = { version = "0.3", features = ["formatting"] }
+
 nix = { version = "0.25", optional = true }
 rand = { version = "0.8", optional = true }
-time = { version = "0.3", features = ["formatting"] }
+ssh2 = { git = "https://github.com/rust-util-collections/ssh2-rs.git", rev = "f10329d2cd372f88149ebb2b63454cba9c0b8ad4", optional = true }
 
 [features]
 default = ["ansi"]
 ansi = []
 compact = []
 
-rich = ["uau", "cmd"]
 uau = ["nix", "rand"]
 cmd = []
+ssh = ["ssh2"]
+
+full = ["uau", "cmd", "ssh"]

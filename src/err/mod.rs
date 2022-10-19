@@ -1,15 +1,37 @@
 //!
-//! #  RucError
+//! # Error management
 //!
 //! All errors will be converted to RucError.
 //!
+//! ## Example
+//!
+//! ```rust
+//! use ruc::*;
+//!
+//! #[derive(Debug, Eq, PartialEq)]
+//! struct CustomErr(i32);
+//!
+//! fn will_panic() {
+//!     let l1 = || -> Result<()> { Err(eg!("The final error message!")) };
+//!     let l2 = || -> Result<()> { l1().c(d!()) };
+//!     let l3 = || -> Result<()> { l2().c(d!("A custom message!")) };
+//!     let l4 = || -> Result<()> { l3().c(d!("ERR_UNKNOWN")) };
+//!     let l5 = || -> Result<()> { l4().c(d!("{:?}", CustomErr(-1))) };
+//!
+//!     pnk!(l5());
+//! }
+//! ```
+//!
+
+mod macros;
+
 use once_cell::sync::Lazy;
 use std::{
     any::{Any, TypeId},
     collections::HashSet,
     env,
     error::Error,
-    fmt::{Debug, Display, Write},
+    fmt::{Debug, Display},
     sync::Mutex,
 };
 
@@ -132,31 +154,14 @@ pub trait RucError: Display + Debug + Send {
         panic!();
     }
 
-    /// Panic after printing `error_chain`
-    #[inline(always)]
-    fn print_die_debug(&self) -> ! {
-        self.print_debug();
-        panic!();
-    }
-
     /// Generate the log string
     #[inline(always)]
     fn generate_log(&self, prefix: Option<&str>) -> String {
-        self.generate_log_custom(false, prefix)
-    }
-
-    /// Generate log in the original `rust debug` format
-    #[inline(always)]
-    fn generate_log_debug(&self) -> String {
-        self.generate_log_custom(true, None)
+        self.generate_log_custom(prefix)
     }
 
     /// Generate the log string with custom mode
-    fn generate_log_custom(
-        &self,
-        debug_mode: bool,
-        prefix: Option<&str>,
-    ) -> String {
+    fn generate_log_custom(&self, prefix: Option<&str>) -> String {
         #[cfg(not(feature = "ansi"))]
         #[inline(always)]
         fn generate_log_header(ns: String, pid: u32) -> String {
@@ -190,13 +195,7 @@ pub trait RucError: Display + Debug + Send {
         let ns = get_pidns(pid).unwrap();
 
         let mut res = generate_log_header(ns, pid);
-
-        if debug_mode {
-            write!(res, " {:#?}", self).unwrap();
-        } else {
-            res.push_str(&self.stringify_chain(prefix));
-        }
-
+        res.push_str(&self.stringify_chain(prefix));
         res
     }
 
@@ -207,19 +206,11 @@ pub trait RucError: Display + Debug + Send {
             eprintln!("{}", self.generate_log(prefix));
         }
     }
-
-    /// Print log in `rust debug` format
-    #[inline(always)]
-    fn print_debug(&self) {
-        if LOG_LK.lock().is_ok() {
-            eprintln!("{}", self.generate_log_debug());
-        }
-    }
 }
 
 /// Convert all `Result` to this
 pub trait RucResult<T, E: Debug + Display + Send> {
-    /// alias for 'chain_error'
+    /// shorter alias for 'chain_error'
     fn c(self, msg: SimpleMsg<E>) -> Result<T>;
 }
 

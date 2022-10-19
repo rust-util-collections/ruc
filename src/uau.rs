@@ -1,4 +1,5 @@
-//! # UAU(uau)
+//!
+//! # UAU
 //!
 //! Unix(Unix Domain Socket) Abstract Udp
 //!
@@ -191,7 +192,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn send_recv() {
+    fn t_send_recv() {
         let sender = pnk!(UauSock::gen(None));
         let receiver = pnk!(UauSock::gen(None));
 

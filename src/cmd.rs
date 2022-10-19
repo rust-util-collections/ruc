@@ -1,5 +1,7 @@
 //!
-//! # Execute external commands
+//! # cmd
+//!
+//! Local command execution based on rust standard library
 //!
 
 use crate::*;
