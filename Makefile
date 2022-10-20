@@ -22,7 +22,7 @@ fmtall:
 	bash tools/fmt.sh
 
 doc:
-	cargo doc --all-features --open
+	cargo doc --features="full" --open
 
 clean:
 	cargo clean

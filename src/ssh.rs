@@ -62,7 +62,7 @@ impl<'a> RemoteHost<'a> {
         let channel =
             sess.channel_session().c(d!()).and_then(|mut channel| {
                 channel
-                    .exec(&cmd)
+                    .exec(cmd)
                     .c(d!())
                     .and_then(|_| channel.send_eof().c(d!()))
                     .and_then(|_| channel.read_to_end(&mut ret).c(d!()))
@@ -118,29 +118,29 @@ impl<'a> RemoteHost<'a> {
 
     /// Send a local file to the target path on the remote host.
     #[inline(always)]
-    pub fn send_file<P: AsRef<Path>>(
+    pub fn put_file<LP: AsRef<Path>, RP: AsRef<Path>>(
         &self,
-        local_path: P,
-        remote_path: P,
+        local_path: LP,
+        remote_path: RP,
     ) -> Result<()> {
         self.scp(local_path, remote_path, true).c(d!())
     }
 
     /// Download a remote file to a local path.
     #[inline(always)]
-    pub fn recv_file<P: AsRef<Path>>(
+    pub fn get_file<RP: AsRef<Path>, LP: AsRef<Path>>(
         &self,
-        local_path: P,
-        remote_path: P,
+        remote_path: RP,
+        local_path: LP,
     ) -> Result<()> {
         self.scp(local_path, remote_path, false).c(d!())
     }
 
     /// Copy files between local host and the remote host.
-    pub fn scp<P: AsRef<Path>>(
+    pub fn scp<LP: AsRef<Path>, RP: AsRef<Path>>(
         &self,
-        local_path: P,
-        remote_path: P,
+        local_path: LP,
+        remote_path: RP,
         direction_is_out: bool,
     ) -> Result<()> {
         if direction_is_out {
