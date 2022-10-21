@@ -15,6 +15,10 @@ test:
 	cargo test --release --no-default-features -- --nocapture --test-threads=1
 	cargo test --release --features="full" -- --nocapture --test-threads=1
 
+update:
+	rustup update stable
+	cargo update
+
 fmt:
 	cargo +nightly fmt
 

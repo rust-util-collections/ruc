@@ -18,7 +18,7 @@ time = { version = "0.3", features = ["formatting"] }
 
 nix = { version = "0.25", optional = true }
 rand = { version = "0.8", optional = true }
-ssh2 = { git = "https://github.com/rust-util-collections/ssh2-rs.git", rev = "f10329d2cd372f88149ebb2b63454cba9c0b8ad4", optional = true }
+ssh2 = { package = "ssh2-patched", version = "0.9.4-p1", optional = true }
 
 [features]
 default = ["ansi"]
