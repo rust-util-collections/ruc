@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "3.0.0"
+version = "3.0.1"
 authors = ["rust-util-collections","fanhui.x@gmail.com"]
 edition = "2021"
 description = "Rust Util Collections"
@@ -11,12 +11,12 @@ homepage = "https://github.com/rust-util-collections/ruc"
 repository = "https://github.com/rust-util-collections/ruc.git"
 
 [dependencies]
-once_cell = "1.13"
+once_cell = "1.16"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 time = { version = "0.3", features = ["formatting"] }
 
-nix = { version = "0.25", optional = true }
+nix = { version = "0.26", optional = true }
 rand = { version = "0.8", optional = true }
 ssh2 = { package = "ssh2-patched", version = "0.9.4-p1", optional = true }
 
