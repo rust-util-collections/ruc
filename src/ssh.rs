@@ -32,8 +32,8 @@ pub struct RemoteHost<'a> {
     pub user: UserRef<'a>,
     /// The sshd listening port of the remote host.
     pub port: Port,
-    /// The local path of the ssh private key(rsa key).
-    pub local_privkey: &'a Path,
+    /// Path list of the ssh secret keys(rsa/ed25519 key).
+    pub local_seckeys: Vec<&'a Path>,
 }
 
 impl<'a> RemoteHost<'a> {
@@ -43,13 +43,16 @@ impl<'a> RemoteHost<'a> {
             .c(d!())?;
         sess.set_tcp_stream(tcp);
         sess.handshake().c(d!()).and_then(|_| {
-            sess.userauth_pubkey_file(
-                self.user,
-                None,
-                self.local_privkey,
-                None,
-            )
-            .c(d!("{:?}", self))
+            for seckey in self.local_seckeys.iter() {
+                let ret =
+                    sess.userauth_pubkey_file(self.user, None, seckey, None);
+                if ret.is_ok() {
+                    return ret.c(d!());
+                } else {
+                    info_omit!(ret);
+                }
+            }
+            Err(eg!("{:?}", self))
         })?;
         Ok(sess)
     }
@@ -164,21 +167,35 @@ pub struct RemoteHostOwned {
     pub user: User,
     /// The sshd listening port of the remote host.
     pub port: Port,
-    /// The local path of the ssh private key(rsa key).
-    pub local_privkey: PathBuf,
+    /// Path list of the ssh secret keys(rsa/ed25519 key).
+    pub local_seckeys: Vec<PathBuf>,
 }
 
 impl RemoteHostOwned {
     /// Create a new instance with default port and key path.
     #[inline(always)]
-    pub fn new_default(addr: HostAddr, user: User) -> Self {
-        let k = env::var("HOME").unwrap() + ".ssh/id_rsa.pub";
-        Self {
+    pub fn new_default(addr: HostAddr, remote_user: User) -> Result<Self> {
+        let home = env::var("HOME").unwrap();
+        let rsa_key_path = PathBuf::from(format!("{}/.ssh/id_rsa", &home));
+        let ed25519_key_path = PathBuf::from(home + "/.ssh/id_ed25519");
+
+        let mut local_seckeys = vec![];
+        if ed25519_key_path.exists() {
+            local_seckeys.push(ed25519_key_path);
+        } else if rsa_key_path.exists() {
+            local_seckeys.push(rsa_key_path);
+        } else {
+            return Err(eg!(
+                "Private key not found, neither RSA nor ED25519."
+            ));
+        };
+
+        Ok(Self {
             addr,
-            user,
+            user: remote_user,
             port: 22,
-            local_privkey: k.into(),
-        }
+            local_seckeys,
+        })
     }
 }
 
@@ -188,7 +205,11 @@ impl<'a> From<&'a RemoteHostOwned> for RemoteHost<'a> {
             addr: o.addr.as_str(),
             user: o.user.as_str(),
             port: o.port,
-            local_privkey: o.local_privkey.as_path(),
+            local_seckeys: o
+                .local_seckeys
+                .iter()
+                .map(|k| k.as_path())
+                .collect::<Vec<_>>(),
         }
     }
 }

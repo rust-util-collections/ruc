@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "3.0.1"
+version = "3.0.3"
 authors = ["rust-util-collections","fanhui.x@gmail.com"]
 edition = "2021"
 description = "Rust Util Collections"
@@ -25,8 +25,8 @@ default = ["ansi"]
 ansi = []
 compact = []
 
-uau = ["nix", "rand"]
+uau = ["nix","rand"]
 cmd = []
 ssh = ["ssh2"]
 
-full = ["uau", "cmd", "ssh"]
+full = ["uau","cmd","ssh"]
