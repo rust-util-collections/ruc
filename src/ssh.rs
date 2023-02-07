@@ -91,7 +91,7 @@ impl<'a> RemoteHost<'a> {
         path.as_ref()
             .to_str()
             .c(d!())
-            .map(|p| format!("cat {}", p))
+            .map(|p| format!("cat {p}"))
             .and_then(|cmd| self.exec_cmd(&cmd).c(d!()))
     }
 

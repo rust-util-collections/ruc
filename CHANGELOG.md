@@ -1,6 +1,10 @@
 # Change log
 
-#### v3.0.0
+#### v4.0
+
+- Add a new feature `no_std`
+
+#### v3.0
 
 - Add support for remote command execution based on the SSH protocol
 - Remove syntactic sugar for printing information in the 'Debug' format

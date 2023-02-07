@@ -6,6 +6,7 @@ build:
 lint:
 	cargo clippy --features="full"
 	cargo clippy --features="full" --tests
+	cargo clippy --no-default-features --features="no_std"
 
 release:
 	cargo build --release

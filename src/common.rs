@@ -83,7 +83,7 @@ macro_rules! min {
 }
 
 /// Sleep in milliseconds
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "no_std")))]
 #[macro_export]
 macro_rules! sleep_ms {
     ($n: expr) => {{
@@ -92,7 +92,7 @@ macro_rules! sleep_ms {
 }
 
 /// get current UTC-timestamp
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "no_std")))]
 #[macro_export]
 macro_rules! ts {
     () => {{
@@ -104,7 +104,7 @@ macro_rules! ts {
 }
 
 /// get current UTC-timestamp
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "no_std"))]
 #[macro_export]
 macro_rules! ts {
     () => {
@@ -113,7 +113,7 @@ macro_rules! ts {
 }
 
 /// generate a 'formated DateTime'
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "no_std")))]
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
     let format = time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]:[offset_second]").unwrap();
@@ -124,8 +124,14 @@ pub fn gen_datetime(ts: i64) -> String {
         .unwrap()
 }
 
+#[cfg(feature = "no_std")]
+extern crate alloc;
+
+#[cfg(feature = "no_std")]
+use alloc::{borrow::ToOwned, string::String};
+
 /// generate a 'formated DateTime'
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "no_std"))]
 #[inline(always)]
 pub fn gen_datetime(_ts: i64) -> String {
     "0000-00-00 00:00:00".to_owned()

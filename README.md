@@ -8,14 +8,15 @@
 Rust Util Collection, components included:
 
 - Chained error management
+  - optional features: `no_std`
 - Local command execution based on rust standard library
-    - required features: `cmd`
+  - required features: `cmd`
 - Remote command execution based on the SSH protocol
-    - required features: `ssh`
+  - required features: `ssh`
 - Interprocess Communication Based on Unix Abstract Sockets
-    - required features: `uau`
-    - only available on various Linux platforms
-    - the built-in functions only support the UDP protocol
+  - required features: `uau`
+  - only available on various Linux platforms
+  - the built-in functions only support the UDP protocol
 - ...
 
 In addition, there is a feature named "full", using it will enable all functional features.

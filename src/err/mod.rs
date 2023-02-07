@@ -25,22 +25,43 @@
 
 mod macros;
 
-use once_cell::sync::Lazy;
-use std::{
+use core::{
     any::{Any, TypeId},
-    collections::HashSet,
-    env,
-    error::Error,
     fmt::{Debug, Display},
-    sync::Mutex,
 };
 
+#[cfg(not(feature = "no_std"))]
+use std::{collections::HashSet, error::Error, sync::Mutex};
+
+#[cfg(feature = "no_std")]
+trait Error: Debug + Display {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+}
+
+#[cfg(feature = "no_std")]
+extern crate alloc;
+
+#[cfg(feature = "no_std")]
+use alloc::{
+    borrow::ToOwned,
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
+
+use once_cell::sync::Lazy;
+
 // avoid out-of-order printing
+#[cfg(not(feature = "no_std"))]
 static LOG_LK: Mutex<()> = Mutex::new(());
 
 /// `INFO` or `ERROR`, if mismatch, default to `INFO`
 pub static LOG_LEVEL: Lazy<String> = Lazy::new(|| {
-    if let Ok(l) = env::var("RUC_LOG_LEVEL") {
+    #[cfg(not(feature = "no_std"))]
+    if let Ok(l) = std::env::var("RUC_LOG_LEVEL") {
         if "ERROR" == l {
             return "ERROR".to_owned();
         }
@@ -49,7 +70,7 @@ pub static LOG_LEVEL: Lazy<String> = Lazy::new(|| {
 });
 
 /// Custom Result
-pub type Result<T> = std::result::Result<T, Box<dyn RucError>>;
+pub type Result<T> = core::result::Result<T, Box<dyn RucError>>;
 
 /// the major trait defination
 pub trait RucError: Display + Debug + Send {
@@ -58,7 +79,8 @@ pub trait RucError: Display + Debug + Send {
 
     /// type ids of errors of each level(from top to bottom).
     fn type_ids(&self) -> Vec<TypeId> {
-        let mut res = vec![self.type_id()];
+        let mut res = Vec::new();
+        res.push(self.type_id());
         while let Some(c) = self.cause() {
             res.push(c.type_id());
         }
@@ -86,6 +108,7 @@ pub trait RucError: Display + Debug + Send {
     }
 
     /// check if any node from the error_chain matches the given error
+    #[cfg(not(feature = "no_std"))]
     fn msg_has_overloop(&self, another: &dyn RucError) -> bool {
         let mut b;
 
@@ -184,10 +207,10 @@ pub trait RucError: Display + Debug + Send {
             )
         }
 
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(any(target_arch = "wasm32", feature = "no_std"))]
         let pid = 0;
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(all(not(target_arch = "wasm32"), not(feature = "no_std")))]
         let pid = std::process::id();
 
         // can not call `p` in the inner,
@@ -202,9 +225,12 @@ pub trait RucError: Display + Debug + Send {
     /// Print log
     #[inline(always)]
     fn print(&self, prefix: Option<&str>) {
+        #[cfg(not(feature = "no_std"))]
         if LOG_LK.lock().is_ok() {
             eprintln!("{}", self.generate_log(prefix));
         }
+        #[cfg(feature = "no_std")]
+        libc_print::libc_eprintln!("{}", self.generate_log(prefix));
     }
 }
 
@@ -229,7 +255,7 @@ impl<T, E: Debug + Display + Send> RucResult<T, E> for Option<T> {
 }
 
 impl<T, E: Debug + Display + Send, ERR: Error> RucResult<T, E>
-    for std::result::Result<T, ERR>
+    for core::result::Result<T, ERR>
 {
     #[inline(always)]
     fn c(self, msg: SimpleMsg<E>) -> Result<T> {
@@ -261,7 +287,7 @@ impl<E: Debug + Display + Send + 'static> SimpleError<E> {
 }
 
 impl<E: Debug + Display + Send + 'static> Display for SimpleError<E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.generate_log(None))
     }
 }
@@ -342,7 +368,7 @@ impl<E: Debug + Display + Send + 'static> SimpleMsg<E> {
 
 impl<E: Debug + Display + Send + 'static> Display for SimpleMsg<E> {
     #[cfg(feature = "ansi")]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "{0}{4}{5}file: {1}{4}{5}line: {2}{4}{6}column: {3}",
@@ -357,7 +383,7 @@ impl<E: Debug + Display + Send + 'static> Display for SimpleMsg<E> {
     }
 
     #[cfg(not(feature = "ansi"))]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "\x1b[01m{0}\x1b[00m{4}{5}\x1b[01mfile:\x1b[00m {1}{4}{5}\x1b[01mline:\x1b[00m {2}{4}{6}\x1b[01mcolumn:\x1b[00m {3}",
@@ -381,9 +407,9 @@ impl<E: Debug + Display + Send + 'static> From<SimpleMsg<E>>
 }
 
 #[inline(always)]
-#[cfg(target_os = "linux")]
+#[cfg(all(not(feature = "no_std"), target_os = "linux"))]
 fn get_pidns(pid: u32) -> Result<String> {
-    std::fs::read_link(format!("/proc/{}/ns/pid", pid))
+    std::fs::read_link(format!("/proc/{pid}/ns/pid"))
         .c(crate::d!())
         .map(|p| {
             p.to_string_lossy()
@@ -394,7 +420,7 @@ fn get_pidns(pid: u32) -> Result<String> {
 }
 
 #[inline(always)]
-#[cfg(not(target_os = "linux"))]
+#[cfg(any(not(target_os = "linux"), feature = "no_std"))]
 #[allow(clippy::unnecessary_wraps)]
 fn get_pidns(_pid: u32) -> Result<String> {
     Ok("NULL".to_owned())
@@ -436,6 +462,7 @@ const fn pretty() -> [&'static str; 2] {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "no_std"))]
 mod test {
     use super::*;
     use std::process;
