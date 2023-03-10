@@ -1,4 +1,4 @@
-all: build
+all: fmt lint
 
 build:
 	cargo build
@@ -14,7 +14,7 @@ release:
 test:
 	cargo test --release -- --nocapture --test-threads=1
 	cargo test --release --no-default-features -- --nocapture --test-threads=1
-	cargo test --release --features="full" -- --nocapture --test-threads=1
+	cargo test --release --features="full,compact" -- --nocapture --test-threads=1
 
 update:
 	rustup update stable

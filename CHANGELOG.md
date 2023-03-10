@@ -2,7 +2,8 @@
 
 #### v4.0
 
-- Add a new feature `no_std`
+- Add new moduler: hash
+- Add new feature: `no_std`
 
 #### v3.0
 

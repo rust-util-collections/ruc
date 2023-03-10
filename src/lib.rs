@@ -28,3 +28,6 @@ pub mod ssh;
 pub mod uau;
 
 pub use err::*;
+
+#[cfg(feature = "crypto")]
+pub mod crypto;
