@@ -1,11 +1,11 @@
 # Change log
 
-#### v4.0
+#### v4.x
 
 - Add new moduler: hash
 - Add new feature: `no_std`
 
-#### v3.0
+#### v3.x
 
 - Add support for remote command execution based on the SSH protocol
 - Remove syntactic sugar for printing information in the 'Debug' format

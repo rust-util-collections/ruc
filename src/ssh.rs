@@ -7,7 +7,7 @@
 //!
 
 use crate::*;
-use ssh2::Session;
+use ssh2::{ScpFileStat, Session};
 use std::{
     env, fs,
     io::{Read, Write},
@@ -84,6 +84,31 @@ impl<'a> RemoteHost<'a> {
             }
             Err(e) => info!(Err(eg!(e))),
         }
+    }
+
+    /// Execute a cmd on a remote host and get its outputs.
+    pub fn exec_exit_code(&self, cmd: &str) -> Result<i32> {
+        let sess = self.gen_session().c(d!())?;
+        let channel =
+            sess.channel_session().c(d!()).and_then(|mut channel| {
+                channel
+                    .exec(cmd)
+                    .c(d!())
+                    .and_then(|_| channel.send_eof().c(d!()))
+                    .and_then(|_| channel.read_to_end(&mut vec![]).c(d!()))
+                    .and_then(|_| channel.close().c(d!()))
+                    .and_then(|_| channel.wait_close().c(d!()))
+                    .map(|_| channel)
+            })?;
+
+        channel.exit_status().c(d!())
+    }
+
+    /// Get the attributes of a file based on the scp protocol
+    pub fn file_stat<P: AsRef<Path>>(&self, path: P) -> Result<ScpFileStat> {
+        self.gen_session().c(d!()).and_then(|s| {
+            s.scp_recv(path.as_ref()).c(d!()).map(|(_, stat)| stat)
+        })
     }
 
     /// Read the contents of a target file from the remote host.
