@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "4.1.2"
+version = "4.2.0"
 authors = ["rust-util-collections","fanhui.x@gmail.com"]
 edition = "2021"
 description = "Rust Util Collections"
@@ -24,7 +24,7 @@ time = { version = "0.3", features = ["formatting"] }
 
 nix = { version = "0.26", optional = true }
 rand = { version = "0.8", optional = true }
-ssh2 = { package = "ssh2-patched", version = "0.9.4-p1", optional = true }
+ssh2 = { version = "0.9.4", optional = true }
 
 [features]
 default = ["ansi"]
