@@ -136,7 +136,7 @@ impl<'a> RemoteHost<'a> {
             .c(d!())
         })?;
         remote_file
-            .write(contents)
+            .write_all(contents)
             .c(d!())
             .and_then(|_| remote_file.send_eof().c(d!()))
             .and_then(|_| remote_file.wait_eof().c(d!()))
