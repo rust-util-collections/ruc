@@ -1,20 +1,7 @@
-#![allow(missing_docs)]
-
-use hash_db::Hasher;
-use keccak_hasher::KeccakHasher;
 use reference_trie::{calc_root, ExtensionLayout};
 use std::fmt::Debug;
 
-pub const HASH_SIZE: usize = <KeccakHasher as Hasher>::LENGTH;
-
-pub type Hash = <KeccakHasher as Hasher>::Out;
-
-#[inline(always)]
-pub fn hash(data: &[u8]) -> Hash {
-    KeccakHasher::hash(data)
-}
-
-pub fn trie_root<I, A, B>(data: I) -> Hash
+pub fn trie_root<I, A, B>(data: I) -> super::KeccakHash
 where
     I: IntoIterator<Item = (A, B)>,
     A: AsRef<[u8]> + Ord + Debug,
@@ -25,13 +12,13 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::super::*;
     use std::mem::size_of;
 
     #[test]
     fn basic() {
         let data = (0u32..1000)
-            .map(|i| (hash(&to_bytes(i)), to_bytes(i)))
+            .map(|i| (keccak_hash(&to_bytes(i)), to_bytes(i)))
             .collect::<Vec<_>>();
         let hash = trie_root(data);
 

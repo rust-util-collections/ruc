@@ -1,5 +1,10 @@
 # Change log
 
+#### v5.x
+
+- Add more crypto utils
+- Remove features related to `no_std` and `wasm32`
+
 #### v4.x
 
 - Add new moduler: hash

@@ -30,37 +30,15 @@ use core::{
     fmt::{Debug, Display},
 };
 
-#[cfg(not(feature = "no_std"))]
 use std::{collections::HashSet, error::Error, sync::Mutex};
-
-#[cfg(feature = "no_std")]
-trait Error: Debug + Display {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-}
-
-#[cfg(feature = "no_std")]
-extern crate alloc;
-
-#[cfg(feature = "no_std")]
-use alloc::{
-    borrow::ToOwned,
-    boxed::Box,
-    format,
-    string::{String, ToString},
-    vec::Vec,
-};
 
 use once_cell::sync::Lazy;
 
 // avoid out-of-order printing
-#[cfg(not(feature = "no_std"))]
 static LOG_LK: Mutex<()> = Mutex::new(());
 
 /// `INFO` or `ERROR`, if mismatch, default to `INFO`
 pub static LOG_LEVEL: Lazy<String> = Lazy::new(|| {
-    #[cfg(not(feature = "no_std"))]
     if let Ok(l) = std::env::var("RUC_LOG_LEVEL") {
         if "ERROR" == l {
             return "ERROR".to_owned();
@@ -108,7 +86,6 @@ pub trait RucError: Display + Debug + Send {
     }
 
     /// check if any node from the error_chain matches the given error
-    #[cfg(not(feature = "no_std"))]
     fn msg_has_overloop(&self, another: &dyn RucError) -> bool {
         let mut b;
 
@@ -207,10 +184,6 @@ pub trait RucError: Display + Debug + Send {
             )
         }
 
-        #[cfg(any(target_arch = "wasm32", feature = "no_std"))]
-        let pid = 0;
-
-        #[cfg(all(not(target_arch = "wasm32"), not(feature = "no_std")))]
         let pid = std::process::id();
 
         // can not call `p` in the inner,
@@ -225,12 +198,9 @@ pub trait RucError: Display + Debug + Send {
     /// Print log
     #[inline(always)]
     fn print(&self, prefix: Option<&str>) {
-        #[cfg(not(feature = "no_std"))]
         if LOG_LK.lock().is_ok() {
             eprintln!("{}", self.generate_log(prefix));
         }
-        #[cfg(feature = "no_std")]
-        libc_print::libc_eprintln!("{}", self.generate_log(prefix));
     }
 }
 
@@ -407,7 +377,6 @@ impl<E: Debug + Display + Send + 'static> From<SimpleMsg<E>>
 }
 
 #[inline(always)]
-#[cfg(all(not(feature = "no_std"), target_os = "linux"))]
 fn get_pidns(pid: u32) -> Result<String> {
     std::fs::read_link(format!("/proc/{pid}/ns/pid"))
         .c(crate::d!())
@@ -417,13 +386,6 @@ fn get_pidns(pid: u32) -> Result<String> {
                 .trim_end_matches(']')
                 .to_owned()
         })
-}
-
-#[inline(always)]
-#[cfg(any(not(target_os = "linux"), feature = "no_std"))]
-#[allow(clippy::unnecessary_wraps)]
-fn get_pidns(_pid: u32) -> Result<String> {
-    Ok("NULL".to_owned())
 }
 
 #[cfg(not(feature = "compact"))]
@@ -462,7 +424,6 @@ const fn pretty() -> [&'static str; 2] {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "no_std"))]
 mod test {
     use super::*;
     use std::process;
