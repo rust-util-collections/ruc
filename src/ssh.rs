@@ -54,6 +54,8 @@ impl<'a> RemoteHost<'a> {
             }
             Err(eg!("{:?}", self))
         })?;
+        sess.set_timeout(20 * 1000);
+        sess.set_blocking(true);
         Ok(sess)
     }
 
