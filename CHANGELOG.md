@@ -1,6 +1,16 @@
 # Change log
 
-#### v3.0.0
+#### v5.x
+
+- Add more crypto utils
+- Remove features related to `no_std` and `wasm32`
+
+#### v4.x
+
+- Add new moduler: hash
+- Add new feature: `no_std`
+
+#### v3.x
 
 - Add support for remote command execution based on the SSH protocol
 - Remove syntactic sugar for printing information in the 'Debug' format

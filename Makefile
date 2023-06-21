@@ -1,4 +1,4 @@
-all: build
+all: fmt lint
 
 build:
 	cargo build
@@ -11,9 +11,13 @@ release:
 	cargo build --release
 
 test:
-	cargo test --release -- --nocapture --test-threads=1
-	cargo test --release --no-default-features -- --nocapture --test-threads=1
-	cargo test --release --features="full" -- --nocapture --test-threads=1
+	cargo test --release -- --test-threads=1
+	cargo test --release --no-default-features -- --test-threads=1
+	cargo test --release --features="full,compact" -- --test-threads=1
+
+update:
+	rustup update stable
+	cargo update
 
 fmt:
 	cargo +nightly fmt
@@ -22,7 +26,7 @@ fmtall:
 	bash tools/fmt.sh
 
 doc:
-	cargo doc --all-features --open
+	cargo doc --features="full" --open
 
 clean:
 	cargo clean

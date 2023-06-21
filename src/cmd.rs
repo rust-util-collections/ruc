@@ -11,7 +11,7 @@ use std::process::Command;
 /// and return its outputs after it exits
 #[inline(always)]
 pub fn exec_output(cmd: &str) -> Result<String> {
-    let res = Command::new("sh").arg("-c").arg(cmd).output().c(d!())?;
+    let res = Command::new("bash").arg("-c").arg(cmd).output().c(d!())?;
     if res.status.success() {
         Ok(String::from_utf8_lossy(&res.stdout).into_owned())
     } else {

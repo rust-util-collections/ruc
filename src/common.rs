@@ -83,7 +83,6 @@ macro_rules! min {
 }
 
 /// Sleep in milliseconds
-#[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
 macro_rules! sleep_ms {
     ($n: expr) => {{
@@ -92,7 +91,6 @@ macro_rules! sleep_ms {
 }
 
 /// get current UTC-timestamp
-#[cfg(not(target_arch = "wasm32"))]
 #[macro_export]
 macro_rules! ts {
     () => {{
@@ -103,17 +101,7 @@ macro_rules! ts {
     }};
 }
 
-/// get current UTC-timestamp
-#[cfg(target_arch = "wasm32")]
-#[macro_export]
-macro_rules! ts {
-    () => {
-        0
-    };
-}
-
 /// generate a 'formated DateTime'
-#[cfg(not(target_arch = "wasm32"))]
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
     let format = time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]:[offset_second]").unwrap();
@@ -122,13 +110,6 @@ pub fn gen_datetime(ts: i64) -> String {
         .to_offset(time::UtcOffset::from_hms(8, 0, 0).unwrap())
         .format(&format)
         .unwrap()
-}
-
-/// generate a 'formated DateTime'
-#[cfg(target_arch = "wasm32")]
-#[inline(always)]
-pub fn gen_datetime(_ts: i64) -> String {
-    "0000-00-00 00:00:00".to_owned()
 }
 
 /// get current DateTime

@@ -7,7 +7,7 @@
 //!
 
 use crate::*;
-use ssh2::Session;
+use ssh2::{ScpFileStat, Session};
 use std::{
     env, fs,
     io::{Read, Write},
@@ -32,8 +32,8 @@ pub struct RemoteHost<'a> {
     pub user: UserRef<'a>,
     /// The sshd listening port of the remote host.
     pub port: Port,
-    /// The local path of the ssh private key(rsa key).
-    pub local_privkey: &'a Path,
+    /// Path list of the ssh secret keys(rsa/ed25519 key).
+    pub local_seckeys: Vec<&'a Path>,
 }
 
 impl<'a> RemoteHost<'a> {
@@ -43,14 +43,19 @@ impl<'a> RemoteHost<'a> {
             .c(d!())?;
         sess.set_tcp_stream(tcp);
         sess.handshake().c(d!()).and_then(|_| {
-            sess.userauth_pubkey_file(
-                self.user,
-                None,
-                self.local_privkey,
-                None,
-            )
-            .c(d!("{:?}", self))
+            for seckey in self.local_seckeys.iter() {
+                let ret =
+                    sess.userauth_pubkey_file(self.user, None, seckey, None);
+                if ret.is_ok() {
+                    return ret.c(d!());
+                } else {
+                    info_omit!(ret);
+                }
+            }
+            Err(eg!("{:?}", self))
         })?;
+        sess.set_timeout(20 * 1000);
+        sess.set_blocking(true);
         Ok(sess)
     }
 
@@ -62,7 +67,7 @@ impl<'a> RemoteHost<'a> {
         let channel =
             sess.channel_session().c(d!()).and_then(|mut channel| {
                 channel
-                    .exec(&cmd)
+                    .exec(cmd)
                     .c(d!())
                     .and_then(|_| channel.send_eof().c(d!()))
                     .and_then(|_| channel.read_to_end(&mut ret).c(d!()))
@@ -83,12 +88,37 @@ impl<'a> RemoteHost<'a> {
         }
     }
 
+    /// Execute a cmd on a remote host and get its outputs.
+    pub fn exec_exit_code(&self, cmd: &str) -> Result<i32> {
+        let sess = self.gen_session().c(d!())?;
+        let channel =
+            sess.channel_session().c(d!()).and_then(|mut channel| {
+                channel
+                    .exec(cmd)
+                    .c(d!())
+                    .and_then(|_| channel.send_eof().c(d!()))
+                    .and_then(|_| channel.read_to_end(&mut vec![]).c(d!()))
+                    .and_then(|_| channel.close().c(d!()))
+                    .and_then(|_| channel.wait_close().c(d!()))
+                    .map(|_| channel)
+            })?;
+
+        channel.exit_status().c(d!())
+    }
+
+    /// Get the attributes of a file based on the scp protocol
+    pub fn file_stat<P: AsRef<Path>>(&self, path: P) -> Result<ScpFileStat> {
+        self.gen_session().c(d!()).and_then(|s| {
+            s.scp_recv(path.as_ref()).c(d!()).map(|(_, stat)| stat)
+        })
+    }
+
     /// Read the contents of a target file from the remote host.
     pub fn read_file<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>> {
         path.as_ref()
             .to_str()
             .c(d!())
-            .map(|p| format!("cat {}", p))
+            .map(|p| format!("cat {p}"))
             .and_then(|cmd| self.exec_cmd(&cmd).c(d!()))
     }
 
@@ -108,7 +138,7 @@ impl<'a> RemoteHost<'a> {
             .c(d!())
         })?;
         remote_file
-            .write(contents)
+            .write_all(contents)
             .c(d!())
             .and_then(|_| remote_file.send_eof().c(d!()))
             .and_then(|_| remote_file.wait_eof().c(d!()))
@@ -118,29 +148,29 @@ impl<'a> RemoteHost<'a> {
 
     /// Send a local file to the target path on the remote host.
     #[inline(always)]
-    pub fn send_file<P: AsRef<Path>>(
+    pub fn put_file<LP: AsRef<Path>, RP: AsRef<Path>>(
         &self,
-        local_path: P,
-        remote_path: P,
+        local_path: LP,
+        remote_path: RP,
     ) -> Result<()> {
         self.scp(local_path, remote_path, true).c(d!())
     }
 
     /// Download a remote file to a local path.
     #[inline(always)]
-    pub fn recv_file<P: AsRef<Path>>(
+    pub fn get_file<RP: AsRef<Path>, LP: AsRef<Path>>(
         &self,
-        local_path: P,
-        remote_path: P,
+        remote_path: RP,
+        local_path: LP,
     ) -> Result<()> {
         self.scp(local_path, remote_path, false).c(d!())
     }
 
     /// Copy files between local host and the remote host.
-    pub fn scp<P: AsRef<Path>>(
+    pub fn scp<LP: AsRef<Path>, RP: AsRef<Path>>(
         &self,
-        local_path: P,
-        remote_path: P,
+        local_path: LP,
+        remote_path: RP,
         direction_is_out: bool,
     ) -> Result<()> {
         if direction_is_out {
@@ -164,21 +194,35 @@ pub struct RemoteHostOwned {
     pub user: User,
     /// The sshd listening port of the remote host.
     pub port: Port,
-    /// The local path of the ssh private key(rsa key).
-    pub local_privkey: PathBuf,
+    /// Path list of the ssh secret keys(rsa/ed25519 key).
+    pub local_seckeys: Vec<PathBuf>,
 }
 
 impl RemoteHostOwned {
     /// Create a new instance with default port and key path.
     #[inline(always)]
-    pub fn new_default(addr: HostAddr, user: User) -> Self {
-        let k = env::var("HOME").unwrap() + ".ssh/id_rsa.pub";
-        Self {
+    pub fn new_default(addr: HostAddr, remote_user: User) -> Result<Self> {
+        let home = env::var("HOME").unwrap();
+        let rsa_key_path = PathBuf::from(format!("{}/.ssh/id_rsa", &home));
+        let ed25519_key_path = PathBuf::from(home + "/.ssh/id_ed25519");
+
+        let mut local_seckeys = vec![];
+        if ed25519_key_path.exists() {
+            local_seckeys.push(ed25519_key_path);
+        } else if rsa_key_path.exists() {
+            local_seckeys.push(rsa_key_path);
+        } else {
+            return Err(eg!(
+                "Private key not found, neither RSA nor ED25519."
+            ));
+        };
+
+        Ok(Self {
             addr,
-            user,
+            user: remote_user,
             port: 22,
-            local_privkey: k.into(),
-        }
+            local_seckeys,
+        })
     }
 }
 
@@ -188,7 +232,11 @@ impl<'a> From<&'a RemoteHostOwned> for RemoteHost<'a> {
             addr: o.addr.as_str(),
             user: o.user.as_str(),
             port: o.port,
-            local_privkey: o.local_privkey.as_path(),
+            local_seckeys: o
+                .local_seckeys
+                .iter()
+                .map(|k| k.as_path())
+                .collect::<Vec<_>>(),
         }
     }
 }
