@@ -377,6 +377,7 @@ impl<E: Debug + Display + Send + 'static> From<SimpleMsg<E>>
 }
 
 #[inline(always)]
+#[cfg(target_os = "linux")]
 fn get_pidns(pid: u32) -> Result<String> {
     std::fs::read_link(format!("/proc/{pid}/ns/pid"))
         .c(crate::d!())
@@ -386,6 +387,13 @@ fn get_pidns(pid: u32) -> Result<String> {
                 .trim_end_matches(']')
                 .to_owned()
         })
+}
+
+#[inline(always)]
+#[cfg(not(target_os = "linux"))]
+#[allow(clippy::unnecessary_wraps)]
+fn get_pidns(_pid: u32) -> Result<String> {
+    Ok("NULL".to_owned())
 }
 
 #[cfg(not(feature = "compact"))]
