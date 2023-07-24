@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "5.0.12"
+version = "5.0.13"
 authors = ["rust-util-collections", "hui.fan@mail.ru"]
 edition = "2021"
 description = "Rust Util Collections"
@@ -9,6 +9,9 @@ categories = ["development-tools::debugging"]
 license = "MIT"
 homepage = "https://github.com/rust-util-collections/ruc"
 repository = "https://github.com/rust-util-collections/ruc.git"
+
+[package.metadata.docs.rs]
+features = ["full"]
 
 [dependencies]
 once_cell = "1.18"
