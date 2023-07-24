@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "5.0.10"
+version = "5.0.12"
 authors = ["rust-util-collections", "hui.fan@mail.ru"]
 edition = "2021"
 description = "Rust Util Collections"
