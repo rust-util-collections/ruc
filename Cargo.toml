@@ -1,7 +1,7 @@
 [package]
 name = "ruc"
-version = "5.1.0"
-authors = ["rust-util-collections", "hui.fan@mail.ru"]
+version = "5.1.1"
+authors = ["hui.fan@mail.ru"]
 edition = "2021"
 description = "Rust Util Collections"
 keywords = ["utils", "error-management"]
