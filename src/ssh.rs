@@ -7,7 +7,7 @@
 //!
 
 use crate::*;
-use ssh2::{ScpFileStat, Session};
+use ssh2::{FileStat, OpenFlags, OpenType, Session};
 use std::{
     env, fs,
     io::{Read, Write},
@@ -106,11 +106,11 @@ impl<'a> RemoteHost<'a> {
         channel.exit_status().c(d!())
     }
 
-    /// Get the attributes of a file based on the scp protocol
-    pub fn file_stat<P: AsRef<Path>>(&self, path: P) -> Result<ScpFileStat> {
-        self.gen_session().c(d!()).and_then(|s| {
-            s.scp_recv(path.as_ref()).c(d!()).map(|(_, stat)| stat)
-        })
+    /// Get the attributes of a file based on the SFTP protocol
+    pub fn file_stat<P: AsRef<Path>>(&self, path: P) -> Result<FileStat> {
+        let sess = self.gen_session().c(d!())?;
+        let sftp = sess.sftp().c(d!())?;
+        sftp.stat(path.as_ref()).c(d!())
     }
 
     /// Read the contents of a target file from the remote host.
@@ -122,8 +122,8 @@ impl<'a> RemoteHost<'a> {
             .and_then(|cmd| self.exec_cmd(&cmd).c(d!()))
     }
 
-    /// Write some local contents to the target file on the remote host.
-    pub fn write_file<P: AsRef<Path>>(
+    /// Fill the target file on the remote host with the local contents
+    pub fn replace_file<P: AsRef<Path>>(
         &self,
         remote_path: P,
         contents: &[u8],
@@ -144,6 +144,26 @@ impl<'a> RemoteHost<'a> {
             .and_then(|_| remote_file.wait_eof().c(d!()))
             .and_then(|_| remote_file.close().c(d!()))
             .and_then(|_| remote_file.wait_close().c(d!()))
+    }
+
+    /// Write(append) local contents to the target file on the remote host
+    pub fn write_file<P: AsRef<Path>>(
+        &self,
+        remote_path: P,
+        contents: &[u8],
+    ) -> Result<()> {
+        let sess = self.gen_session().c(d!())?;
+        let sftp = sess.sftp().c(d!())?;
+        let mut remote_file = sftp
+            .open_mode(
+                remote_path.as_ref(),
+                OpenFlags::CREATE | OpenFlags::WRITE | OpenFlags::APPEND,
+                0o644,
+                OpenType::File,
+            )
+            .c(d!())?;
+        remote_file.write_all(contents).c(d!())?;
+        remote_file.fsync().c(d!())
     }
 
     /// Send a local file to the target path on the remote host.
