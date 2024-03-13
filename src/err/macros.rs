@@ -71,6 +71,17 @@ macro_rules! print_msg {
     }};
 }
 
+/// eprint custom msg
+#[macro_export]
+macro_rules! eprint_msg {
+    ($fmt: expr, $($arg:tt)*) => {{
+        println!("\n{}", $crate::d!($fmt, $($arg)*));
+    }};
+    ($msg: expr) => {{
+        $crate::eprint_msg!("{}", $msg)
+    }};
+}
+
 /// Just a panic
 #[macro_export]
 macro_rules! die {
@@ -152,5 +163,6 @@ mod tests {
         omit!(Err::<u8, _>(eg!()));
         info_omit!(Err::<u8, _>(eg!()));
         print_msg!("{:?}", ts!());
+        eprint_msg!("{:?}", ts!());
     }
 }
