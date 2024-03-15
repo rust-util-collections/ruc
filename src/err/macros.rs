@@ -75,7 +75,7 @@ macro_rules! print_msg {
 #[macro_export]
 macro_rules! eprint_msg {
     ($fmt: expr, $($arg:tt)*) => {{
-        println!("\n{}", $crate::d!($fmt, $($arg)*));
+        eprintln!("\n{}", $crate::d!($fmt, $($arg)*));
     }};
     ($msg: expr) => {{
         $crate::eprint_msg!("{}", $msg)
