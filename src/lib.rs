@@ -1,9 +1,4 @@
-//!
-//! # RUC
-//!
-//! Useful util-collections for Rust.
-//!
-
+#![doc = include_str!("../README.md")]
 #![deny(warnings)]
 #![deny(missing_docs)]
 
