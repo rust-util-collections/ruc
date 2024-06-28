@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "5.1.8"
+version = "6.0.0"
 authors = ["hui.fan@mail.ru"]
 edition = "2021"
 description = "Rust Util Collections"
@@ -20,12 +20,11 @@ sha3 = { version = "0.10.8", optional = true }
 
 ed25519-zebra = { version = "4.0.0", optional = true }
 
-reference-trie = { version = "0.29.0", optional = true }
 rand = { version = "0.8", optional = true }
-base64 = {version = "0.21.2", optional = true }
+base64 = {version = "0.22.1", optional = true }
 hex = {version = "0.4.3", optional = true }
 
-nix = { version = "0.28", features = ["socket"], optional = true }
+nix = { version = "0.29", features = ["socket"], optional = true }
 time = { version = "0.3", features = ["formatting"] }
 ssh2 = { version = "0.9.4", optional = true }
 
@@ -39,7 +38,7 @@ compact = []
 uau = ["nix","rand"]
 cmd = []
 ssh = ["ssh2"]
-crypto = ["reference-trie", "sha3", "ed25519-zebra", "rand", "base64", "hex"]
-SerDe = ["serde"]
+crypto = ["sha3", "ed25519-zebra", "rand", "base64", "hex"]
+ser_de = ["serde"]
 
-full = ["uau", "cmd", "ssh", "crypto", "SerDe"]
+full = ["uau", "cmd", "ssh", "crypto", "ser_de"]

@@ -1,5 +1,10 @@
 # Change log
 
+#### v6.x
+
+- Remove the trie related functions
+- Rename the `SerDe` feature to `ser_de`
+
 #### v5.x
 
 - Add more crypto/codec utils
