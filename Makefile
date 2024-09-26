@@ -17,7 +17,7 @@ test:
 
 update:
 	rustup update stable
-	cargo update
+	cargo update --verbose
 
 fmt:
 	cargo +nightly fmt

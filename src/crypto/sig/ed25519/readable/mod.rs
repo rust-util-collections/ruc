@@ -5,13 +5,13 @@ use std::fmt;
 pub use ed25519_zebra::SigningKey as RawSignKey;
 pub use ed25519_zebra::VerificationKey as RawVerifyKey;
 
-#[cfg_attr(feature = "SerDe", derive(serde::Deserialize, serde::Serialize))]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct SignKey(String);
 
-#[cfg_attr(feature = "SerDe", derive(serde::Deserialize, serde::Serialize))]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct VerifyKey(String);
 
-#[cfg_attr(feature = "SerDe", derive(serde::Deserialize, serde::Serialize))]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct Sig(String);
 
 // <signing key + verify key> in base64 format
