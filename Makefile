@@ -1,4 +1,4 @@
-all: fmt lint
+all: fmt lint test
 
 build:
 	cargo build
