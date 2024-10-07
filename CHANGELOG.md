@@ -1,5 +1,13 @@
 # Change log
 
+#### v7.x
+
+- Reorganize modules
+- Add new toolkits
+    - http(no https support)
+    - compress/uncompress: zlib
+    - encode/decode: message pack, json, etc.
+
 #### v6.x
 
 - Remove the trie related functions
