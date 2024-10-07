@@ -2,7 +2,8 @@
 
 use crate::*;
 use reqwest::{
-    StatusCode, {Client, ClientBuilder},
+    blocking::{Client, ClientBuilder},
+    StatusCode,
 };
 use std::{env, sync::LazyLock, time::Duration};
 
@@ -15,7 +16,7 @@ static TIME_OUT: LazyLock<Duration> = LazyLock::new(|| {
     Duration::from_secs(secs)
 });
 
-pub async fn http_get(
+pub fn get(
     url: &str,
     headers: Option<&[(&'static str, &'static str)]>,
 ) -> Result<(StatusCode, Vec<u8>)> {
@@ -25,23 +26,22 @@ pub async fn http_get(
             builder = builder.header(h, v);
         }
     }
-    let resp = builder.send().await.c(d!(url))?;
+    let resp = builder.send().c(d!(url))?;
     let code = resp.status();
-    let msg = resp.bytes().await.c(d!())?;
+    let msg = resp.bytes().c(d!())?;
     Ok((code, msg.into()))
 }
 
-pub async fn http_get_ret_string(
+pub fn get_resp_str(
     url: &str,
     headers: Option<&[(&'static str, &'static str)]>,
 ) -> Result<(StatusCode, String)> {
-    http_get(url, headers)
-        .await
+    get(url, headers)
         .c(d!())
         .map(|(code, msg)| (code, String::from_utf8_lossy(&msg).into_owned()))
 }
 
-pub async fn http_post(
+pub fn post(
     url: &str,
     body: &[u8],
     headers: Option<&[(&'static str, &'static str)]>,
@@ -52,32 +52,32 @@ pub async fn http_post(
             builder = builder.header(h, v);
         }
     }
-    let resp = builder.body(body.to_owned()).send().await.c(d!(url))?;
+    let resp = builder.body(body.to_owned()).send().c(d!(url))?;
     let code = resp.status();
-    let msg = resp.bytes().await.c(d!())?;
+    let msg = resp.bytes().c(d!())?;
     Ok((code, msg.into()))
 }
 
 /// # Example
 ///
-/// ```ignore
+/// ```no_run
+///    use ruc::*;
+///
 ///    let url = "http://......";
 ///    let req = "...".as_bytes();
-///    http_post_ret_string(
+///    ruc::http::post_resp_str(
 ///        url,
 ///        req,
 ///        Some(&[("Content-Type", "application/json")]),
 ///    )
-///    .await
-///    .c(d!(url))
+///    .unwrap();
 /// ```
-pub async fn http_post_ret_string(
+pub fn post_resp_str(
     url: &str,
     body: &[u8],
     headers: Option<&[(&'static str, &'static str)]>,
 ) -> Result<(StatusCode, String)> {
-    http_post(url, body, headers)
-        .await
+    post(url, body, headers)
         .c(d!())
         .map(|(code, msg)| (code, String::from_utf8_lossy(&msg).into_owned()))
 }
