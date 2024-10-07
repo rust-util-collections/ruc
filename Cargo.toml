@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "7.1.0"
+version = "7.2.0"
 authors = ["hui.fan@mail.ru"]
 edition = "2021"
 description = "Rust Util Collections"
@@ -55,7 +55,7 @@ algo = [
 ]
 
 algo_hash = [ "sha3" ]
-algo_rand = [ "rand" ]
+algo_rand = [ "rand", "ende_hex" ]
 algo_crypto = [ "ed25519-zebra", "ende_base64", "ende_hex" ]
 
 ende = [
