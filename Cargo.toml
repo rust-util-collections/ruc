@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "7.0.0"
+version = "7.0.1"
 authors = ["hui.fan@mail.ru"]
 edition = "2021"
 description = "Rust Util Collections"
@@ -46,9 +46,9 @@ cmd = []
 ssh = [ "ssh2" ]
 
 algo = [
-	"algo_hash",
-	"algo_crypto",
-	"algo_rand",
+    "algo_hash",
+    "algo_crypto",
+    "algo_rand",
 ]
 
 algo_hash = [ "sha3" ]
@@ -56,12 +56,12 @@ algo_rand = [ "rand" ]
 algo_crypto = [ "ed25519-zebra", "ende_base64", "ende_hex" ]
 
 ende = [
-	"ende_hex",
-	"ende_base64",
-	"ende_compress",
-	"ende_json",
-	"ende_msgpack",
-	"ende_transcode",
+    "ende_hex",
+    "ende_base64",
+    "ende_compress",
+    "ende_json",
+    "ende_msgpack",
+    "ende_transcode",
 ]
 
 ende_hex = [ "hex" ]
