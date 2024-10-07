@@ -28,17 +28,17 @@ use nix::{
     },
     unistd::close,
 };
-use std::os::unix::io::RawFd;
+use std::os::{fd::OwnedFd, unix::io::AsRawFd};
 
 /// Wrap raw data
 pub struct UauSock {
-    fd: RawFd,
+    fd: OwnedFd,
     sa: UnixAddr,
 }
 
 impl Drop for UauSock {
     fn drop(&mut self) {
-        info_omit!(close(self.fd));
+        info_omit!(close(self.fd.as_raw_fd()));
     }
 }
 
@@ -58,11 +58,11 @@ impl UauSock {
         )
         .c(d!())?;
 
-        setsockopt(fd, sockopt::ReuseAddr, &true).c(d!())?;
-        setsockopt(fd, sockopt::ReusePort, &true).c(d!())?;
+        setsockopt(&fd, sockopt::ReuseAddr, &true).c(d!())?;
+        setsockopt(&fd, sockopt::ReusePort, &true).c(d!())?;
         if let Some(to) = recv_timeout {
             setsockopt(
-                fd,
+                &fd,
                 sockopt::ReceiveTimeout,
                 &TimeVal::milliseconds(to),
             )
@@ -70,7 +70,7 @@ impl UauSock {
         }
 
         let sa = UnixAddr::new_abstract(addr).c(d!())?;
-        bind(fd, &sa).c(d!())?;
+        bind(fd.as_raw_fd(), &sa).c(d!())?;
 
         Ok(UauSock { fd, sa })
     }
@@ -91,7 +91,7 @@ impl UauSock {
     /// Send msg to another peer
     #[inline(always)]
     pub fn send(&self, msg: &[u8], peeraddr: &UnixAddr) -> Result<()> {
-        sendto(self.fd, msg, peeraddr, MsgFlags::empty())
+        sendto(self.fd.as_raw_fd(), msg, peeraddr, MsgFlags::empty())
             .c(d!())
             .map(|_| ())
     }
@@ -174,7 +174,7 @@ impl UauSock {
     /// Receive msg with a given buffer
     #[inline(always)]
     pub fn recv(&self, buf: &mut [u8]) -> Result<(usize, UnixAddr)> {
-        match recvfrom::<UnixAddr>(self.fd, buf) {
+        match recvfrom::<UnixAddr>(self.fd.as_raw_fd(), buf) {
             Ok((n, Some(peer))) => Ok((n, peer)),
             Err(e) => Err(eg!(e)),
             _ => Err(eg!("peer address is unknown")),

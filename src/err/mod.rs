@@ -30,15 +30,13 @@ use core::{
     fmt::{Debug, Display},
 };
 
-use std::{collections::HashSet, error::Error, sync::Mutex};
-
-use once_cell::sync::Lazy;
+use std::{collections::HashSet, error::Error, sync::LazyLock, sync::Mutex};
 
 // avoid out-of-order printing
 static LOG_LK: Mutex<()> = Mutex::new(());
 
 /// `INFO` or `ERROR`, if mismatch, default to `INFO`
-pub static LOG_LEVEL: Lazy<String> = Lazy::new(|| {
+pub static LOG_LEVEL: LazyLock<String> = LazyLock::new(|| {
     if let Ok(l) = std::env::var("RUC_LOG_LEVEL") {
         if "ERROR" == l {
             return "ERROR".to_owned();

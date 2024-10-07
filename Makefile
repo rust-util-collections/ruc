@@ -1,4 +1,4 @@
-all: fmt lint
+all: fmt lint test
 
 build:
 	cargo build
@@ -17,7 +17,7 @@ test:
 
 update:
 	rustup update stable
-	cargo update
+	cargo update --verbose
 
 fmt:
 	cargo +nightly fmt

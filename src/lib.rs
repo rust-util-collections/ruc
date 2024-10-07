@@ -1,9 +1,4 @@
-//!
-//! # RUC
-//!
-//! Useful util-collections for Rust.
-//!
-
+#![doc = include_str!("../README.md")]
 #![deny(warnings)]
 #![deny(missing_docs)]
 
@@ -20,7 +15,10 @@ pub mod ssh;
 #[cfg(target_os = "linux")]
 pub mod uau;
 
-pub use err::*;
+pub mod algo;
 
-#[cfg(feature = "crypto")]
-pub mod crypto;
+pub mod ende;
+
+/////////////////////////////////////////////
+
+pub use err::*;
