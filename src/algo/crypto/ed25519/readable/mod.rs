@@ -1,5 +1,5 @@
 use super::origin;
-use crate::{crypto::codec::base64, *};
+use crate::{ende::base64, *};
 use std::fmt;
 
 pub use ed25519_zebra::SigningKey as RawSignKey;
