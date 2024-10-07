@@ -20,7 +20,7 @@ update:
 	cargo update --verbose
 
 fmt:
-	cargo +nightly fmt
+	cargo fmt
 
 fmtall:
 	bash tools/fmt.sh

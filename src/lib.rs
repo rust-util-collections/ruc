@@ -15,6 +15,9 @@ pub mod ssh;
 #[cfg(target_os = "linux")]
 pub mod uau;
 
+#[cfg(feature = "http")]
+pub mod http;
+
 pub mod algo;
 
 pub mod ende;

@@ -17,8 +17,15 @@ Rust Util Collection, components included:
   - required features: `uau`
   - only available on various Linux platforms
   - the built-in functions only support the UDP protocol
-- Crypto operations
-  - required features: `crypto`
+- Algorithm operations
+  - required features: `algo`
+    - rand, hash, ecc sigature, etc.
+- Encode/Decode operations
+  - required features: `ende`
+    - hex, base64
+    - zlib compress, zlib uncompress
+    - json, message-pack, serde transcode
+    - and so on ...
 - ...
 
 In addition, there is a feature named "full", using it will enable all functional features.
@@ -35,6 +42,13 @@ Links to static documentations:
 - [Local command execution](doc/cmd.md)
 - [Remote command execution](doc/ssh.md)
 - [Interprocess Communication](doc/uau.md)
+
+### Version Rules
+
+Examples:
+- Major function changes: `v2.0.0 ==> v2.0.0`
+- Minor function changes: `v1.0.0 ==> v1.1.0`
+- Documentation changes: `v1.0.0 ==> v1.0.1`
 
 ### Gratitude
 
