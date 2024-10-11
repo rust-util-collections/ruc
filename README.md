@@ -43,13 +43,6 @@ Links to static documentations:
 - [Remote command execution](doc/ssh.md)
 - [Interprocess Communication](doc/uau.md)
 
-### Version Rules
-
-Examples:
-- Major function changes: `v2.0.0 ==> v2.0.0`
-- Minor function changes: `v1.0.0 ==> v1.1.0`
-- Documentation changes: `v1.0.0 ==> v1.0.1`
-
 ### Gratitude
 
 Thanks to all the people who already contributed!

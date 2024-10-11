@@ -71,6 +71,9 @@ impl<'a> RemoteHost<'a> {
                     .c(d!())
                     .and_then(|_| channel.send_eof().c(d!()))
                     .and_then(|_| channel.read_to_end(&mut ret).c(d!()))
+                    .or_else(|e| {
+                        channel.stderr().read_to_end(&mut ret).c(d!(e))
+                    })
                     .and_then(|_| channel.close().c(d!()))
                     .and_then(|_| channel.wait_close().c(d!()))
                     .map(|_| channel)
@@ -84,7 +87,9 @@ impl<'a> RemoteHost<'a> {
                     Err(eg!(String::from_utf8_lossy(&ret)))
                 }
             }
-            Err(e) => info!(Err(eg!(e))),
+            Err(e) => {
+                info!(Err(eg!("{}\n{}", e, String::from_utf8_lossy(&ret))))
+            }
         }
     }
 
