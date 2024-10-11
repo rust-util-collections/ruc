@@ -75,11 +75,11 @@ impl<'a> RemoteHost<'a> {
         channel.wait_close().c(d!())?;
 
         if stdout.is_empty() {
-            stdout = "null".as_bytes().to_vec();
+            stdout = "''".as_bytes().to_vec();
         }
 
         if stderr.is_empty() {
-            stderr = "null".to_string();
+            stderr = "''".to_string();
         }
 
         match channel.exit_status() {
