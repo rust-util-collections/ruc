@@ -61,34 +61,44 @@ impl<'a> RemoteHost<'a> {
 
     /// Execute a cmd on a remote host and get its outputs.
     pub fn exec_cmd(&self, cmd: &str) -> Result<Vec<u8>> {
-        let mut ret = vec![];
+        let mut stdout = vec![];
+        let mut stderr = String::new();
 
         let sess = self.gen_session().c(d!())?;
-        let channel =
-            sess.channel_session().c(d!()).and_then(|mut channel| {
-                channel
-                    .exec(cmd)
-                    .c(d!())
-                    .and_then(|_| channel.send_eof().c(d!()))
-                    .and_then(|_| channel.read_to_end(&mut ret).c(d!()))
-                    .or_else(|e| {
-                        channel.stderr().read_to_end(&mut ret).c(d!(e))
-                    })
-                    .and_then(|_| channel.close().c(d!()))
-                    .and_then(|_| channel.wait_close().c(d!()))
-                    .map(|_| channel)
-            })?;
+        let mut channel = sess.channel_session().c(d!())?;
+        channel.exec(cmd).c(d!())?;
+        channel.send_eof().c(d!())?;
+        channel.read_to_end(&mut stdout).c(d!())?;
+        channel.stderr().read_to_string(&mut stderr).c(d!())?;
+        channel.wait_eof().c(d!())?;
+        channel.close().c(d!())?;
+        channel.wait_close().c(d!())?;
+
+        if stdout.is_empty() {
+            stdout = "null".as_bytes().to_vec();
+        }
+
+        if stderr.is_empty() {
+            stderr = "null".to_string();
+        }
 
         match channel.exit_status() {
             Ok(code) => {
                 if 0 == code {
-                    Ok(ret)
+                    Ok(stdout)
                 } else {
-                    Err(eg!(String::from_utf8_lossy(&ret)))
+                    Err(eg!(
+                        "STDOUT: {}; STDERR: {stderr}",
+                        String::from_utf8_lossy(&stdout),
+                    ))
                 }
             }
             Err(e) => {
-                info!(Err(eg!("{}\n{}", e, String::from_utf8_lossy(&ret))))
+                info!(Err(eg!(
+                    "STDOUT: {}; STDERR: {stderr}\n{}",
+                    String::from_utf8_lossy(&stdout),
+                    e,
+                )))
             }
         }
     }
@@ -102,7 +112,7 @@ impl<'a> RemoteHost<'a> {
                     .exec(cmd)
                     .c(d!())
                     .and_then(|_| channel.send_eof().c(d!()))
-                    .and_then(|_| channel.read_to_end(&mut vec![]).c(d!()))
+                    .and_then(|_| channel.wait_eof().c(d!()))
                     .and_then(|_| channel.close().c(d!()))
                     .and_then(|_| channel.wait_close().c(d!()))
                     .map(|_| channel)
