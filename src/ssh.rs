@@ -54,8 +54,14 @@ impl<'a> RemoteHost<'a> {
             }
             Err(eg!("{:?}", self))
         })?;
-        sess.set_timeout(20 * 1000);
+
+        let timeout = env::var("RUC_SSH_TIMEOUT")
+            .ok()
+            .and_then(|t| info!(t.parse::<u32>(), t).ok())
+            .unwrap_or(20);
+        sess.set_timeout(timeout.max(300) * 1000);
         sess.set_blocking(true);
+
         Ok(sess)
     }
 

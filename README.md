@@ -43,6 +43,12 @@ Links to static documentations:
 - [Remote command execution](doc/ssh.md)
 - [Interprocess Communication](doc/uau.md)
 
+#### ENV VARs
+
+- `$RUC_SSH_TIMEOUT`: ssh process timeout
+  - Default to 20s
+  - The max value is 300s(5 minutes)
+
 ### Gratitude
 
 Thanks to all the people who already contributed!
