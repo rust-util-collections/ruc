@@ -168,7 +168,7 @@ impl<'a> RemoteHost<'a> {
     }
 
     /// Write(append) local contents to the target file on the remote host
-    pub fn write_file<P: AsRef<Path>>(
+    pub fn append_file<P: AsRef<Path>>(
         &self,
         remote_path: P,
         contents: &[u8],
@@ -216,7 +216,7 @@ impl<'a> RemoteHost<'a> {
     ) -> Result<()> {
         if direction_is_out {
             fs::read(local_path.as_ref()).c(d!()).and_then(|contents| {
-                self.write_file(remote_path, &contents).c(d!())
+                self.replace_file(remote_path, &contents).c(d!())
             })
         } else {
             self.read_file(remote_path)
