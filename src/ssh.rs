@@ -33,7 +33,7 @@ pub struct RemoteHost<'a> {
     /// The sshd listening port of the remote host.
     pub port: Port,
     /// Path list of the ssh secret keys(rsa/ed25519 key).
-    pub local_seckeys: Vec<&'a Path>,
+    pub local_sk: &'a Path,
 }
 
 impl<'a> RemoteHost<'a> {
@@ -43,16 +43,9 @@ impl<'a> RemoteHost<'a> {
             .c(d!())?;
         sess.set_tcp_stream(tcp);
         sess.handshake().c(d!()).and_then(|_| {
-            for seckey in self.local_seckeys.iter() {
-                let ret =
-                    sess.userauth_pubkey_file(self.user, None, seckey, None);
-                if ret.is_ok() {
-                    return ret.c(d!());
-                } else {
-                    info_omit!(ret);
-                }
-            }
-            Err(eg!("{:?}", self))
+            let p = PathBuf::from(self.local_sk);
+            sess.userauth_pubkey_file(self.user, None, p.as_path(), None)
+                .c(d!())
         })?;
 
         let timeout = env::var("RUC_SSH_TIMEOUT")
@@ -236,7 +229,7 @@ pub struct RemoteHostOwned {
     /// The sshd listening port of the remote host.
     pub port: Port,
     /// Path list of the ssh secret keys(rsa/ed25519 key).
-    pub local_seckeys: Vec<PathBuf>,
+    pub local_sk: PathBuf,
 }
 
 impl RemoteHostOwned {
@@ -247,11 +240,11 @@ impl RemoteHostOwned {
         let rsa_key_path = PathBuf::from(format!("{}/.ssh/id_rsa", &home));
         let ed25519_key_path = PathBuf::from(home + "/.ssh/id_ed25519");
 
-        let mut local_seckeys = vec![];
+        let local_sk;
         if ed25519_key_path.exists() {
-            local_seckeys.push(ed25519_key_path);
+            local_sk = ed25519_key_path;
         } else if rsa_key_path.exists() {
-            local_seckeys.push(rsa_key_path);
+            local_sk = rsa_key_path;
         } else {
             return Err(eg!(
                 "Private key not found, neither RSA nor ED25519."
@@ -262,7 +255,7 @@ impl RemoteHostOwned {
             addr,
             user: remote_user,
             port: 22,
-            local_seckeys,
+            local_sk,
         })
     }
 }
@@ -273,11 +266,7 @@ impl<'a> From<&'a RemoteHostOwned> for RemoteHost<'a> {
             addr: o.addr.as_str(),
             user: o.user.as_str(),
             port: o.port,
-            local_seckeys: o
-                .local_seckeys
-                .iter()
-                .map(|k| k.as_path())
-                .collect::<Vec<_>>(),
+            local_sk: o.local_sk.as_path(),
         }
     }
 }
