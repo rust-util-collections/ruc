@@ -37,6 +37,16 @@ pub struct RemoteHost<'a> {
 }
 
 impl<'a> RemoteHost<'a> {
+    fn id(&self) -> String {
+        format!(
+            "{}|{}|{}|{}",
+            self.addr,
+            self.user,
+            self.port,
+            self.local_sk.to_str().unwrap_or_default()
+        )
+    }
+
     fn gen_session(&self) -> Result<Session> {
         let mut sess = Session::new().c(d!())?;
         let tcp = TcpStream::connect(format!("{}:{}", &self.addr, self.port))
@@ -87,15 +97,17 @@ impl<'a> RemoteHost<'a> {
                     Ok(stdout)
                 } else {
                     Err(eg!(
-                        "STDOUT: {}; STDERR: {stderr}",
+                        "STDOUT: {}; STDERR: [{}] {stderr}",
                         String::from_utf8_lossy(&stdout),
+                        self.id(),
                     ))
                 }
             }
             Err(e) => {
                 info!(Err(eg!(
-                    "STDOUT: {}; STDERR: {stderr}\n{}",
+                    "STDOUT: {}; STDERR: [{}] {stderr}\n{}",
                     String::from_utf8_lossy(&stdout),
+                    self.id(),
                     e,
                 )))
             }
@@ -117,14 +129,14 @@ impl<'a> RemoteHost<'a> {
                     .map(|_| channel)
             })?;
 
-        channel.exit_status().c(d!())
+        channel.exit_status().c(d!(self.id()))
     }
 
     /// Get the attributes of a file based on the SFTP protocol
     pub fn file_stat<P: AsRef<Path>>(&self, path: P) -> Result<FileStat> {
         let sess = self.gen_session().c(d!())?;
         let sftp = sess.sftp().c(d!())?;
-        sftp.stat(path.as_ref()).c(d!())
+        sftp.stat(path.as_ref()).c(d!(self.id()))
     }
 
     /// Read the contents of a target file from the remote host.
@@ -149,7 +161,7 @@ impl<'a> RemoteHost<'a> {
                 contents.len() as u64,
                 None,
             )
-            .c(d!())
+            .c(d!(self.id()))
         })?;
         remote_file
             .write_all(contents)
@@ -158,6 +170,7 @@ impl<'a> RemoteHost<'a> {
             .and_then(|_| remote_file.wait_eof().c(d!()))
             .and_then(|_| remote_file.close().c(d!()))
             .and_then(|_| remote_file.wait_close().c(d!()))
+            .c(d!(self.id()))
     }
 
     /// Write(append) local contents to the target file on the remote host
@@ -166,7 +179,7 @@ impl<'a> RemoteHost<'a> {
         remote_path: P,
         contents: &[u8],
     ) -> Result<()> {
-        let sess = self.gen_session().c(d!())?;
+        let sess = self.gen_session().c(d!(self.id()))?;
         let sftp = sess.sftp().c(d!())?;
         let mut remote_file = sftp
             .open_mode(
@@ -176,7 +189,7 @@ impl<'a> RemoteHost<'a> {
                 OpenType::File,
             )
             .c(d!())?;
-        remote_file.write_all(contents).c(d!())?;
+        remote_file.write_all(contents).c(d!(self.id()))?;
         remote_file.fsync().c(d!())
     }
 
