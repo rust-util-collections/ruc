@@ -18,8 +18,10 @@ pub mod uau;
 #[cfg(feature = "http")]
 pub mod http;
 
+// DO NOT SET features!
 pub mod algo;
 
+// DO NOT SET features!
 pub mod ende;
 
 /////////////////////////////////////////////

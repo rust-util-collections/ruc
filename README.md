@@ -48,6 +48,9 @@ Links to static documentations:
 - `$RUC_SSH_TIMEOUT`: ssh process timeout
   - Default to 20s
   - The max value is 300s(5 minutes)
+- `$RUC_HTTP_TIMEOUT`: http process timeout
+  - Default to 3s
+  - The max value is 255s(`u8::MAX`)
 
 ### Gratitude
 
