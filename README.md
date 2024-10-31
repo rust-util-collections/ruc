@@ -43,12 +43,14 @@ Links to static documentations:
 - [Remote command execution](doc/ssh.md)
 - [Interprocess Communication](doc/uau.md)
 
-### Version Rules
+#### ENV VARs
 
-Examples:
-- Major function changes: `v2.0.0 ==> v2.0.0`
-- Minor function changes: `v1.0.0 ==> v1.1.0`
-- Documentation changes: `v1.0.0 ==> v1.0.1`
+- `$RUC_SSH_TIMEOUT`: ssh process timeout
+  - Default to 20s
+  - The max value is 300s(5 minutes)
+- `$RUC_HTTP_TIMEOUT`: http process timeout
+  - Default to 3s
+  - The max value is 255s(`u8::MAX`)
 
 ### Gratitude
 

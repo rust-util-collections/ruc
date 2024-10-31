@@ -8,12 +8,13 @@ use reqwest::{
 use std::{env, sync::LazyLock, time::Duration};
 
 static TIME_OUT: LazyLock<Duration> = LazyLock::new(|| {
+    let default = 3;
     let secs = if let Ok(t) = env::var("RUC_HTTP_TIMEOUT") {
-        pnk!(t.parse::<u64>())
+        t.parse::<u8>().unwrap_or(default)
     } else {
-        3
+        default
     };
-    Duration::from_secs(secs)
+    Duration::from_secs(secs as u64)
 });
 
 pub fn get(
