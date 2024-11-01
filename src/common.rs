@@ -131,7 +131,7 @@ macro_rules! ts {
 /// generate a 'formated DateTime'
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
-    let format = time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]:[offset_minute]:[offset_second]").unwrap();
+    let format = time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]").unwrap();
     time::OffsetDateTime::from_unix_timestamp(ts)
         .unwrap()
         .to_offset(time::UtcOffset::from_hms(8, 0, 0).unwrap())
