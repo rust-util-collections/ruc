@@ -49,8 +49,8 @@ impl<'a> RemoteHost<'a> {
 
     fn gen_session(&self) -> Result<Session> {
         let mut sess = Session::new().c(d!())?;
-        let tcp = TcpStream::connect(format!("{}:{}", &self.addr, self.port))
-            .c(d!())?;
+        let endpoint = format!("{}:{}", &self.addr, self.port);
+        let tcp = TcpStream::connect(&endpoint).c(d!(&endpoint))?;
         sess.set_tcp_stream(tcp);
         sess.handshake().c(d!()).and_then(|_| {
             let p = PathBuf::from(self.local_sk);
