@@ -83,14 +83,6 @@ impl<'a> RemoteHost<'a> {
         channel.close().c(d!())?;
         channel.wait_close().c(d!())?;
 
-        if stdout.is_empty() {
-            stdout = "''".as_bytes().to_vec();
-        }
-
-        if stderr.is_empty() {
-            stderr = "''".to_string();
-        }
-
         match channel.exit_status() {
             Ok(code) => {
                 if 0 == code {
