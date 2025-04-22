@@ -1,5 +1,5 @@
 use crate::*;
-use base64::prelude::{Engine, BASE64_STANDARD};
+use base64::prelude::{BASE64_STANDARD, Engine};
 
 #[inline(always)]
 pub fn encode<T: AsRef<[u8]>>(orig: T) -> String {

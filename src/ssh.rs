@@ -36,7 +36,7 @@ pub struct RemoteHost<'a> {
     pub local_sk: &'a Path,
 }
 
-impl<'a> RemoteHost<'a> {
+impl RemoteHost<'_> {
     fn id(&self) -> String {
         format!(
             "{}|{}|{}|{}",
@@ -49,8 +49,8 @@ impl<'a> RemoteHost<'a> {
 
     fn gen_session(&self) -> Result<Session> {
         let mut sess = Session::new().c(d!())?;
-        let tcp = TcpStream::connect(format!("{}:{}", &self.addr, self.port))
-            .c(d!())?;
+        let endpoint = format!("{}:{}", &self.addr, self.port);
+        let tcp = TcpStream::connect(&endpoint).c(d!(&endpoint))?;
         sess.set_tcp_stream(tcp);
         sess.handshake().c(d!()).and_then(|_| {
             let p = PathBuf::from(self.local_sk);
@@ -82,14 +82,6 @@ impl<'a> RemoteHost<'a> {
         channel.wait_eof().c(d!())?;
         channel.close().c(d!())?;
         channel.wait_close().c(d!())?;
-
-        if stdout.is_empty() {
-            stdout = "''".as_bytes().to_vec();
-        }
-
-        if stderr.is_empty() {
-            stderr = "''".to_string();
-        }
 
         match channel.exit_status() {
             Ok(code) => {
@@ -274,7 +266,7 @@ impl RemoteHostOwned {
 }
 
 impl<'a> From<&'a RemoteHostOwned> for RemoteHost<'a> {
-    fn from(o: &'a RemoteHostOwned) -> RemoteHost {
+    fn from(o: &'a RemoteHostOwned) -> RemoteHost<'a> {
         Self {
             addr: o.addr.as_str(),
             user: o.user.as_str(),

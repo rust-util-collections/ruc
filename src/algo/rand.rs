@@ -1,5 +1,5 @@
 use crate::ende::hex;
-use rand::{thread_rng, RngCore};
+use rand::{RngCore, thread_rng};
 
 #[inline(always)]
 pub fn rand_jwt() -> String {

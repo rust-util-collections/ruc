@@ -21,8 +21,8 @@ use crate::*;
 use nix::{
     sys::{
         socket::{
-            bind, recvfrom, sendto, setsockopt, socket, sockopt,
-            AddressFamily, MsgFlags, SockFlag, SockType, UnixAddr,
+            AddressFamily, MsgFlags, SockFlag, SockType, UnixAddr, bind,
+            recvfrom, sendto, setsockopt, socket, sockopt,
         },
         time::{TimeVal, TimeValLike},
     },
@@ -77,7 +77,7 @@ impl UauSock {
 
     /// Generate a random instance
     #[inline(always)]
-    pub fn gen(recv_timeout: Option<i64>) -> Result<Self> {
+    pub fn create(recv_timeout: Option<i64>) -> Result<Self> {
         let addr = (ts!() as u32 ^ rand::random::<u32>()).to_ne_bytes();
         Self::new(&addr, recv_timeout).c(d!())
     }
@@ -193,8 +193,8 @@ mod test {
 
     #[test]
     fn t_send_recv() {
-        let sender = pnk!(UauSock::gen(None));
-        let receiver = pnk!(UauSock::gen(None));
+        let sender = pnk!(UauSock::create(None));
+        let receiver = pnk!(UauSock::create(None));
 
         pnk!(sender.send(&987654321_u32.to_ne_bytes()[..], receiver.addr()));
         assert_eq!(

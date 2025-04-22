@@ -16,7 +16,7 @@ cd $EXEC_PATH || exit 1
 #################################################
 
 for file in $(find .. -path "../target" -a -prune \
-    -o -type f \
+    -a -type f \
     -o -name "*.rs" \
     -o -name "*.c" \
     -o -name "*.h" \

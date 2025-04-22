@@ -1,7 +1,7 @@
 use crate::{algo::hash::keccak, ende::base64, *};
 use aes_gcm::{
-    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
+    aead::{Aead, KeyInit},
 };
 
 pub fn encrypt(password: &str, contents: &[u8]) -> Result<Vec<u8>> {
