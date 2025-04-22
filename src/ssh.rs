@@ -36,7 +36,7 @@ pub struct RemoteHost<'a> {
     pub local_sk: &'a Path,
 }
 
-impl<'a> RemoteHost<'a> {
+impl RemoteHost<'_> {
     fn id(&self) -> String {
         format!(
             "{}|{}|{}|{}",
@@ -266,7 +266,7 @@ impl RemoteHostOwned {
 }
 
 impl<'a> From<&'a RemoteHostOwned> for RemoteHost<'a> {
-    fn from(o: &'a RemoteHostOwned) -> RemoteHost {
+    fn from(o: &'a RemoteHostOwned) -> RemoteHost<'a> {
         Self {
             addr: o.addr.as_str(),
             user: o.user.as_str(),

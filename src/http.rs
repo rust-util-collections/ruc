@@ -2,8 +2,8 @@
 
 use crate::*;
 use reqwest::{
-    blocking::{Client, ClientBuilder},
     StatusCode,
+    blocking::{Client, ClientBuilder},
 };
 use std::{env, sync::LazyLock, time::Duration};
 

@@ -142,12 +142,8 @@ pub fn gen_datetime(ts: i64) -> String {
 /// get current DateTime
 #[macro_export]
 macro_rules! datetime {
-    ($ts: expr) => {{
-        $crate::common::gen_datetime($ts as i64)
-    }};
-    () => {{
-        $crate::datetime!($crate::ts!())
-    }};
+    ($ts: expr) => {{ $crate::common::gen_datetime($ts as i64) }};
+    () => {{ $crate::datetime!($crate::ts!()) }};
 }
 
 #[cfg(test)]

@@ -1,5 +1,5 @@
 use crate::*;
-use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
+use flate2::{Compression, read::ZlibDecoder, write::ZlibEncoder};
 use std::io::{Read, Write};
 
 pub fn zlib_compress(inputs: &[u8]) -> Result<Vec<u8>> {
