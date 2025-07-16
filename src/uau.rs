@@ -59,7 +59,6 @@ impl UauSock {
         .c(d!())?;
 
         setsockopt(&fd, sockopt::ReuseAddr, &true).c(d!())?;
-        setsockopt(&fd, sockopt::ReusePort, &true).c(d!())?;
         if let Some(to) = recv_timeout {
             setsockopt(
                 &fd,
