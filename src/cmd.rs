@@ -76,6 +76,7 @@ pub fn exec_timeout(cmd: &str, timeout_milliseconds: u64) -> Result<String> {
                 if 0 < try_times {
                     try_times -= 1;
                 } else {
+                    info_omit!(child.kill());
                     return Err(eg!("Process time out!"));
                 }
             }
