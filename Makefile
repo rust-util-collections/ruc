@@ -16,7 +16,6 @@ test:
 	cargo test --release --features="full,compact" -- --test-threads=1
 
 update:
-	rustup update stable
 	cargo update --verbose
 
 fmt:
