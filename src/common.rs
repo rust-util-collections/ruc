@@ -31,6 +31,19 @@ macro_rules! map {
     }};
 }
 
+/// BTreeMap operations
+#[macro_export]
+macro_rules! bmap {
+    () => {{
+        std::collections::BTreeMap::new()
+    }};
+    ($($k: expr => $v: expr),+ $(,)*) => {{
+        let mut m = bmap! {};
+        $(m.insert($k, $v);)*
+        m
+    }};
+}
+
 /// HashSet/BTreeSet operations
 #[macro_export]
 macro_rules! set {
@@ -53,6 +66,19 @@ macro_rules! set {
     }};
     (B $($k: expr),+ $(,)*) => {{
         let mut m = set! {B};
+        $(m.insert($k);)*
+        m
+    }};
+}
+
+/// BTreeSet operations
+#[macro_export]
+macro_rules! bset {
+    () => {{
+        std::collections::BTreeSet::new()
+    }};
+    ($($k: expr),+ $(,)*) => {{
+        let mut m = bset! {};
         $(m.insert($k);)*
         m
     }};
@@ -184,5 +210,44 @@ mod tests {
         assert_eq!(a, b);
         assert_ne!(a, c);
         assert_eq!(a * 2, c);
+    }
+
+    #[test]
+    fn t_bmap_bset() {
+        // Test bmap!
+        // Single element
+        let m1 = bmap! {"a" => 1};
+        assert_eq!(m1.len(), 1);
+        assert_eq!(m1.get("a"), Some(&1));
+
+        // Multiple elements
+        let m2 = bmap! {"a" => 1, "b" => 2};
+        assert_eq!(m2.len(), 2);
+        assert_eq!(m2.get("b"), Some(&2));
+
+        // Multiple elements with trailing comma
+        let m3 = bmap! {
+            "a" => 1,
+            "b" => 2,
+            "c" => 3,
+        };
+        assert_eq!(m3.len(), 3);
+        assert_eq!(m3.get("c"), Some(&3));
+
+        // Test bset!
+        // Single element
+        let s1 = bset! {1};
+        assert_eq!(s1.len(), 1);
+        assert!(s1.contains(&1));
+
+        // Multiple elements
+        let s2 = bset! {1, 2};
+        assert_eq!(s2.len(), 2);
+        assert!(s2.contains(&2));
+
+        // Multiple elements with trailing comma
+        let s3 = bset! {1, 2, 3,};
+        assert_eq!(s3.len(), 3);
+        assert!(s3.contains(&3));
     }
 }

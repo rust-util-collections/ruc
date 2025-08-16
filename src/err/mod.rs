@@ -37,10 +37,10 @@ static LOG_LK: Mutex<()> = Mutex::new(());
 
 /// `INFO` or `ERROR`, if mismatch, default to `INFO`
 pub static LOG_LEVEL: LazyLock<String> = LazyLock::new(|| {
-    if let Ok(l) = std::env::var("RUC_LOG_LEVEL") {
-        if "ERROR" == l {
-            return "ERROR".to_owned();
-        }
+    if let Ok(l) = std::env::var("RUC_LOG_LEVEL")
+        && "ERROR" == l
+    {
+        return "ERROR".to_owned();
     }
     "INFO".to_owned()
 });
