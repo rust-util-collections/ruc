@@ -1,10 +1,10 @@
 use crate::ende::hex;
-use rand::{RngCore, thread_rng};
+use rand::{RngCore, rng};
 
 #[inline(always)]
 pub fn rand_jwt() -> String {
     let mut data = [0u8; 32];
-    thread_rng().fill_bytes(&mut data);
+    rng().fill_bytes(&mut data);
     hex::encode(data)
 }
 
@@ -16,7 +16,7 @@ pub fn rand_jwt_n(n: usize) -> String {
 #[inline(always)]
 pub fn rand_data(len: usize) -> Vec<u8> {
     let mut data = vec![0u8; len];
-    thread_rng().fill_bytes(&mut data);
+    rng().fill_bytes(&mut data);
     data
 }
 
