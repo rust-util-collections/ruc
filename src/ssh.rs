@@ -241,7 +241,7 @@ impl RemoteHostOwned {
     /// Create a new instance with default port and key path.
     #[inline(always)]
     pub fn new_default(addr: HostAddr, remote_user: User) -> Result<Self> {
-        let home = env::var("HOME").unwrap();
+        let home = env::var("HOME").c(d!())?;
         let rsa_key_path = PathBuf::from(format!("{}/.ssh/id_rsa", &home));
         let ed25519_key_path = PathBuf::from(home + "/.ssh/id_ed25519");
 

@@ -186,7 +186,7 @@ pub trait RucError: Display + Debug + Send {
 
         // can not call `p` in the inner,
         // or will cause a infinite loop
-        let ns = get_pidns(pid).unwrap();
+        let ns = get_pidns(pid).unwrap_or_else(|_| "UNKNOWN".to_owned());
 
         let mut res = generate_log_header(ns, pid);
         res.push_str(&self.stringify_chain(prefix));
