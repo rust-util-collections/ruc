@@ -30,10 +30,7 @@ use core::{
     fmt::{Debug, Display},
 };
 
-use std::{collections::HashSet, error::Error, sync::LazyLock, sync::Mutex};
-
-// avoid out-of-order printing
-static LOG_LK: Mutex<()> = Mutex::new(());
+use std::{collections::HashSet, error::Error, sync::LazyLock};
 
 /// `INFO` or `ERROR`, if mismatch, default to `INFO`
 pub static LOG_LEVEL: LazyLock<String> = LazyLock::new(|| {
@@ -44,6 +41,10 @@ pub static LOG_LEVEL: LazyLock<String> = LazyLock::new(|| {
     }
     "INFO".to_owned()
 });
+
+static PID: LazyLock<u32> = LazyLock::new(std::process::id);
+static PID_NS: LazyLock<String> =
+    LazyLock::new(|| get_pidns(*PID).unwrap_or_else(|_| "UNKNOWN".to_owned()));
 
 /// Custom Result
 pub type Result<T> = core::result::Result<T, Box<dyn RucError>>;
@@ -57,8 +58,10 @@ pub trait RucError: Display + Debug + Send {
     fn type_ids(&self) -> Vec<TypeId> {
         let mut res = Vec::new();
         res.push(self.type_id());
-        while let Some(c) = self.cause() {
+        let mut current = self.cause();
+        while let Some(c) = current {
             res.push(c.type_id());
+            current = c.cause();
         }
         res
     }
@@ -85,25 +88,25 @@ pub trait RucError: Display + Debug + Send {
 
     /// check if any node from the error_chain matches the given error
     fn msg_has_overloop(&self, another: &dyn RucError) -> bool {
-        let mut b;
-
         let mut self_list = HashSet::new();
         self_list.insert(self.get_top_msg());
-        b = self.cause();
+        let mut b = self.cause();
         while let Some(next) = b {
             self_list.insert(next.get_top_msg());
             b = next.cause();
         }
 
-        let mut target_list = HashSet::new();
-        target_list.insert(another.get_top_msg());
+        if self_list.contains(&another.get_top_msg()) {
+            return true;
+        }
         b = another.cause();
         while let Some(next) = b {
-            target_list.insert(next.get_top_msg());
+            if self_list.contains(&next.get_top_msg()) {
+                return true;
+            }
             b = next.cause();
         }
-
-        !self_list.is_disjoint(&target_list)
+        false
     }
 
     /// convert the error of current level to string
@@ -162,7 +165,7 @@ pub trait RucError: Display + Debug + Send {
     fn generate_log_custom(&self, prefix: Option<&str>) -> String {
         #[cfg(not(feature = "ansi"))]
         #[inline(always)]
-        fn generate_log_header(ns: String, pid: u32) -> String {
+        fn generate_log_header(ns: &str, pid: u32) -> String {
             format!(
                 "\n\x1b[31;01m# {time} [pid: {pid}] [pidns: {ns}]\x1b[00m",
                 time = crate::datetime!(),
@@ -173,7 +176,7 @@ pub trait RucError: Display + Debug + Send {
 
         #[cfg(feature = "ansi")]
         #[inline(always)]
-        fn generate_log_header(ns: String, pid: u32) -> String {
+        fn generate_log_header(ns: &str, pid: u32) -> String {
             format!(
                 "\n# {time} [pid: {pid}] [pidns: {ns}]",
                 time = crate::datetime!(),
@@ -182,13 +185,7 @@ pub trait RucError: Display + Debug + Send {
             )
         }
 
-        let pid = std::process::id();
-
-        // can not call `p` in the inner,
-        // or will cause a infinite loop
-        let ns = get_pidns(pid).unwrap_or_else(|_| "UNKNOWN".to_owned());
-
-        let mut res = generate_log_header(ns, pid);
+        let mut res = generate_log_header(&PID_NS, *PID);
         res.push_str(&self.stringify_chain(prefix));
         res
     }
@@ -196,9 +193,8 @@ pub trait RucError: Display + Debug + Send {
     /// Print log
     #[inline(always)]
     fn print(&self, prefix: Option<&str>) {
-        if LOG_LK.lock().is_ok() {
-            eprintln!("{}", self.generate_log(prefix));
-        }
+        let msg = self.generate_log(prefix);
+        eprintln!("{}", msg);
     }
 }
 
@@ -467,5 +463,16 @@ mod test {
         assert!(e1.lowest_is_type(&""));
         assert!(e2.lowest_is_type(&""));
         assert_eq!(e2.lowest_type_id(), TypeId::of::<&str>());
+    }
+
+    #[test]
+    fn t_error_chain_ids() {
+        let e1 = SimpleError::new(SimpleMsg::new("root", "f", 1, 1), None);
+        let e2 = SimpleError::new(
+            SimpleMsg::new("cause", "f", 2, 2),
+            Some(Box::new(e1)),
+        );
+        let ids = e2.type_ids();
+        assert_eq!(ids.len(), 2);
     }
 }
