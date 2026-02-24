@@ -105,16 +105,14 @@ macro_rules! alt {
 #[macro_export]
 macro_rules! max {
     ($v1: expr, $v2: expr $(,)*) => {{
-        $crate::alt!($v1 > $v2, { $v1 }, { $v2 })
+        let (a, b) = ($v1, $v2);
+        if a > b { a } else { b }
     }};
-    ($v1: expr, $v2:expr, $($v: expr),+ $(,)*) => {{
-        let len = 2 + [$(&$v),*].len();
-        let mut m = Vec::with_capacity(len);
-        m.push($v1);
-        m.push($v2);
-        $(m.push($v);)*
-        m.sort_unstable();
-        m[len - 1]
+    ($v1: expr, $v2: expr, $($v: expr),+ $(,)*) => {{
+        let mut ret = $v1;
+        { let v = $v2; if v > ret { ret = v; } }
+        $({ let v = $v; if v > ret { ret = v; } })*
+        ret
     }};
 }
 
@@ -122,16 +120,14 @@ macro_rules! max {
 #[macro_export]
 macro_rules! min {
     ($v1: expr, $v2: expr $(,)*) => {{
-        $crate::alt!($v1 > $v2, { $v2 }, { $v1 })
+        let (a, b) = ($v1, $v2);
+        if a < b { a } else { b }
     }};
-    ($v1: expr, $v2:expr, $($v: expr),+ $(,)*) => {{
-        let len = 2 + [$(&$v),*].len();
-        let mut m = Vec::with_capacity(len);
-        m.push($v1);
-        m.push($v2);
-        $(m.push($v);)*
-        m.sort_unstable();
-        m[0]
+    ($v1: expr, $v2: expr, $($v: expr),+ $(,)*) => {{
+        let mut ret = $v1;
+        { let v = $v2; if v < ret { ret = v; } }
+        $({ let v = $v; if v < ret { ret = v; } })*
+        ret
     }};
 }
 
@@ -154,13 +150,20 @@ macro_rules! ts {
     }};
 }
 
-/// generate a 'formated DateTime'
+/// Cached local UTC offset, detected once at first access.
+/// Falls back to UTC if detection fails (e.g., in multi-threaded context).
+static LOCAL_OFFSET: std::sync::LazyLock<time::UtcOffset> =
+    std::sync::LazyLock::new(|| {
+        time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC)
+    });
+
+/// Generate a formatted DateTime string
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
     let format = time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]").unwrap();
     time::OffsetDateTime::from_unix_timestamp(ts)
         .unwrap()
-        .to_offset(time::UtcOffset::from_hms(8, 0, 0).unwrap())
+        .to_offset(*LOCAL_OFFSET)
         .format(&format)
         .unwrap()
 }
@@ -174,8 +177,6 @@ macro_rules! datetime {
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
-
     #[test]
     fn t_max_min() {
         assert_eq!(10, max!(1, 10,));
@@ -210,6 +211,29 @@ mod tests {
         assert_eq!(a, b);
         assert_ne!(a, c);
         assert_eq!(a * 2, c);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn t_local_offset() {
+        let output = std::process::Command::new("date")
+            .arg("+%z")
+            .output()
+            .expect("failed to execute `date`");
+        let tz_str = std::str::from_utf8(&output.stdout).unwrap().trim();
+
+        // Parse "+0800" or "-0500" format
+        let sign: i32 = if tz_str.starts_with('-') { -1 } else { 1 };
+        let hours: i32 = tz_str[1..3].parse().unwrap();
+        let minutes: i32 = tz_str[3..5].parse().unwrap();
+        let expected = sign * (hours * 3600 + minutes * 60);
+
+        let detected = super::LOCAL_OFFSET.whole_seconds();
+        assert_eq!(
+            detected, expected,
+            "LOCAL_OFFSET ({}s) does not match OS timezone ({})",
+            detected, tz_str
+        );
     }
 
     #[test]

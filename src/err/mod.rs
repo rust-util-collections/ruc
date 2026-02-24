@@ -30,7 +30,7 @@ use core::{
     fmt::{Debug, Display},
 };
 
-use std::{collections::HashSet, error::Error, sync::LazyLock};
+use std::{collections::HashSet, sync::LazyLock};
 
 /// `INFO` or `ERROR`, if mismatch, default to `INFO`
 pub static LOG_LEVEL: LazyLock<String> = LazyLock::new(|| {
@@ -49,7 +49,7 @@ static PID_NS: LazyLock<String> =
 /// Custom Result
 pub type Result<T> = core::result::Result<T, Box<dyn RucError>>;
 
-/// the major trait defination
+/// The major trait definition
 pub trait RucError: Display + Debug + Send {
     /// type id of current error type
     fn type_id(&self) -> TypeId;
@@ -81,7 +81,7 @@ pub trait RucError: Display + Debug + Send {
         self.type_ids().contains(&e.type_id())
     }
 
-    /// compare two object
+    /// Compare two objects
     fn msg_eq(&self, another: &dyn RucError) -> bool {
         self.get_lowest_msg() == another.get_lowest_msg()
     }
@@ -122,7 +122,7 @@ pub trait RucError: Display + Debug + Send {
     /// "error msg" + "debug info"
     fn get_top_msg_with_dbginfo(&self) -> String;
 
-    /// point to a error which caused current error
+    /// Point to the error which caused current error
     fn cause(&self) -> Option<&dyn RucError> {
         None
     }
@@ -198,17 +198,14 @@ pub trait RucError: Display + Debug + Send {
     }
 }
 
-/// Convert all `Result` to this
+/// Chain any `Result<T, ERR>` or `Option<T>` into `ruc::Result<T>`.
+///
+/// Works with any error type that implements `Display + Send + 'static`,
+/// including `String`, `&str`, `io::Error`, `anyhow::Error`,
+/// and `Box<dyn RucError>` from different ruc versions.
 pub trait RucResult<T, E: Debug + Display + Send> {
-    /// shorter alias for 'chain_error'
+    /// Shorter alias for 'chain_error'
     fn c(self, msg: SimpleMsg<E>) -> Result<T>;
-}
-
-impl<T, E: Debug + Display + Send> RucResult<T, E> for Result<T> {
-    #[inline(always)]
-    fn c(self, msg: SimpleMsg<E>) -> Result<T> {
-        self.map_err(|e| SimpleError::new(msg, Some(e)).into())
-    }
 }
 
 impl<T, E: Debug + Display + Send> RucResult<T, E> for Option<T> {
@@ -218,24 +215,30 @@ impl<T, E: Debug + Display + Send> RucResult<T, E> for Option<T> {
     }
 }
 
-impl<T, E: Debug + Display + Send, ERR: Error> RucResult<T, E>
-    for core::result::Result<T, ERR>
+impl<T, E: Debug + Display + Send, ERR: Display + Send + 'static>
+    RucResult<T, E> for core::result::Result<T, ERR>
 {
     #[inline(always)]
     fn c(self, msg: SimpleMsg<E>) -> Result<T> {
         self.map_err(|e| {
-            let inner =
-                SimpleMsg::new(e.to_string(), &msg.file, msg.line, msg.column);
-            SimpleError::new(
-                msg,
-                Some(Box::new(SimpleError::new(inner, None))),
-            )
-            .into()
+            let err_str = e.to_string();
+            let any_e: Box<dyn Any + Send> = Box::new(e);
+            let cause: Box<dyn RucError> =
+                match any_e.downcast::<Box<dyn RucError>>() {
+                    Ok(ruc_err) => *ruc_err,
+                    Err(_) => {
+                        let inner = SimpleMsg::new(
+                            err_str, &msg.file, msg.line, msg.column,
+                        );
+                        Box::new(SimpleError::new(inner, None))
+                    }
+                };
+            SimpleError::new(msg, Some(cause)).into()
         })
     }
 }
 
-/// A pre-impled Error
+/// A pre-implemented Error
 #[derive(Debug)]
 pub struct SimpleError<E: Debug + Display + Send + 'static> {
     msg: SimpleMsg<E>,
@@ -474,5 +477,37 @@ mod test {
         );
         let ids = e2.type_ids();
         assert_eq!(ids.len(), 2);
+    }
+
+    #[test]
+    fn t_chain_string_error() {
+        let r: core::result::Result<(), String> =
+            Err("string error".to_owned());
+        let r = r.c(crate::d!("wrapping string"));
+        assert!(r.is_err());
+        let e = r.unwrap_err();
+        assert!(e.get_lowest_msg().contains("string error"));
+    }
+
+    #[test]
+    fn t_chain_str_error() {
+        let r: core::result::Result<(), &str> = Err("str error");
+        let r = r.c(crate::d!("wrapping str"));
+        assert!(r.is_err());
+        let e = r.unwrap_err();
+        assert!(e.get_lowest_msg().contains("str error"));
+    }
+
+    #[test]
+    fn t_chain_preserves_ruc_error() {
+        let l1 = || -> Result<()> { Err(crate::eg!("root cause")) };
+        let l2 = || -> Result<()> { l1().c(crate::d!("level 2")) };
+        let l3 = || -> Result<()> { l2().c(crate::d!("level 3")) };
+
+        let e = l3().unwrap_err();
+        // chain should have 3 levels (level3 -> level2 -> root)
+        let ids = e.type_ids();
+        assert_eq!(ids.len(), 3);
+        assert!(e.get_lowest_msg().contains("root cause"));
     }
 }

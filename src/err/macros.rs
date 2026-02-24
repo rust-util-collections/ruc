@@ -4,7 +4,7 @@
 //! Useful macros for chained error managements.
 //!
 
-/// print infomation only
+/// Print information only
 #[macro_export]
 macro_rules! info {
     ($ops: expr, $fmt: expr, $($arg:tt)*) => {{
@@ -31,7 +31,7 @@ macro_rules! omit {
     }};
 }
 
-/// drop the result afeter printing the message
+/// Drop the result after printing the message
 #[macro_export]
 macro_rules! info_omit {
     ($ops: expr, $fmt: expr, $($arg:tt)*) => {{
@@ -45,18 +45,17 @@ macro_rules! info_omit {
     }};
 }
 
-/// print debug-info, eg: modular and file path, line number ...
+/// Generate debug info, e.g., file path, line number, column number
 #[macro_export]
 macro_rules! d {
     ($fmt: expr, $($arg:tt)*) => {{
-        let err = format!("{}", format_args!($fmt, $($arg)*));
-        $crate::err::SimpleMsg::new(err, file!(), line!(), column!())
+        $crate::err::SimpleMsg::new(format!($fmt, $($arg)*), file!(), line!(), column!())
     }};
     ($err: expr) => {{
         $crate::d!("{}", $err)
     }};
     () => {{
-        $crate::d!("")
+        $crate::err::SimpleMsg::new(String::new(), file!(), line!(), column!())
     }};
 }
 
@@ -89,12 +88,12 @@ macro_rules! die {
         $crate::print_msg!($fmt, $($arg)*);
         panic!();
     }};
-    ($msg:expr) => {{
-        $crate::die!("{}", $msg);
+    ($msg: expr) => {{
+        $crate::die!("{}", $msg)
     }};
-    () => {
-        $crate::die!("");
-    };
+    () => {{
+        $crate::die!("")
+    }};
 }
 
 /// Print log, and panic
@@ -121,9 +120,9 @@ macro_rules! eg {
     ($err: expr) => {{
         $crate::eg!("{}", $err)
     }};
-    () => {
+    () => {{
         $crate::eg!("")
-    };
+    }};
 }
 
 #[cfg(test)]

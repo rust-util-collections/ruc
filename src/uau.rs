@@ -14,7 +14,7 @@
 //! the returned addrlen is greater than sizeof(sa_family_t) (i.e., greater than 2),
 //! and the name of the socket is contained in the first (addrlen - sizeof(sa_family_t)) bytes of sun_path.
 //!
-//! `man unix(7)` for more infomation.
+//! `man unix(7)` for more information.
 //!
 
 use crate::*;
