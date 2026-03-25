@@ -1,5 +1,5 @@
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use rand::Rng;
+use rand::RngExt;
 
 pub(super) fn create_keypair() -> (SigningKey, VerifyingKey) {
     let mut bytes = [0u8; 32];
