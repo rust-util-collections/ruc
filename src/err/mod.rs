@@ -246,7 +246,7 @@ pub struct SimpleError<E: Debug + Display + Send + 'static> {
 }
 
 impl<E: Debug + Display + Send + 'static> SimpleError<E> {
-    #[allow(missing_docs)]
+    /// Create a new error with the given message and optional cause.
     #[inline(always)]
     pub fn new(msg: SimpleMsg<E>, cause: Option<Box<dyn RucError>>) -> Self {
         SimpleError { msg, cause }
@@ -432,12 +432,12 @@ const fn indent() -> &'static str {
 
 #[cfg(all(not(feature = "compact"), feature = "ansi"))]
 const fn pretty() -> [&'static str; 2] {
-    ["|--", "`--"]
+    ["├──", "└──"]
 }
 
 #[cfg(all(not(feature = "compact"), not(feature = "ansi")))]
 const fn pretty() -> [&'static str; 2] {
-    ["├──", "└──"]
+    ["|--", "`--"]
 }
 
 #[cfg(feature = "compact")]

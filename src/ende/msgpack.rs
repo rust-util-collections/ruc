@@ -16,3 +16,34 @@ where
 {
     rmp::from_slice(bytes).c(d!())
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[derive(Debug, PartialEq, Serialize, Deserialize)]
+    struct Sample {
+        x: i32,
+        y: String,
+        z: Vec<u8>,
+    }
+
+    #[test]
+    fn roundtrip() {
+        let original = Sample {
+            x: 42,
+            y: "hello".to_owned(),
+            z: vec![1, 2, 3],
+        };
+        let encoded = encode(&original).unwrap();
+        let decoded: Sample = decode(&encoded).unwrap();
+        assert_eq!(original, decoded);
+    }
+
+    #[test]
+    fn roundtrip_primitives() {
+        let encoded = encode(&"test string").unwrap();
+        let decoded: String = decode(&encoded).unwrap();
+        assert_eq!(decoded, "test string");
+    }
+}

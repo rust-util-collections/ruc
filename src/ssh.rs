@@ -106,7 +106,7 @@ impl RemoteHost<'_> {
         }
     }
 
-    /// Execute a cmd on a remote host and get its outputs.
+    /// Execute a cmd on a remote host and get its exit code.
     pub fn exec_exit_code(&self, cmd: &str) -> Result<i32> {
         let sess = self.gen_session().c(d!())?;
         let channel =
@@ -131,13 +131,14 @@ impl RemoteHost<'_> {
         sftp.stat(path.as_ref()).c(d!(self.id()))
     }
 
-    /// Read the contents of a target file from the remote host.
+    /// Read the contents of a target file from the remote host via SFTP.
     pub fn read_file<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>> {
-        path.as_ref()
-            .to_str()
-            .c(d!())
-            .map(|p| format!("cat {p}"))
-            .and_then(|cmd| self.exec_cmd(&cmd).c(d!()))
+        let sess = self.gen_session().c(d!())?;
+        let sftp = sess.sftp().c(d!())?;
+        let mut file = sftp.open(path.as_ref()).c(d!(self.id()))?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf).c(d!())?;
+        Ok(buf)
     }
 
     /// Fill the target file on the remote host with the local contents

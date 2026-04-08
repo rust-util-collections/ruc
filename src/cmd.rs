@@ -12,8 +12,11 @@ enum PollRet {
     NotReady(Child),
 }
 
-/// Execute an external command,
-/// and return its outputs after it exits
+/// Execute an external command via `bash -c`,
+/// and return its outputs after it exits.
+///
+/// The `cmd` string is passed directly to the shell.
+/// Do not pass unsanitized user input.
 #[inline(always)]
 pub fn exec(cmd: &str) -> Result<String> {
     let ret = Command::new("bash").arg("-c").arg(cmd).output().c(d!())?;
@@ -22,14 +25,6 @@ pub fn exec(cmd: &str) -> Result<String> {
     } else {
         Err(eg!(String::from_utf8_lossy(&ret.stderr).into_owned()))
     }
-}
-
-/// Execute an external command,
-/// and return its outputs after it exits
-#[deprecated(since = "9.0.0", note = "please use `exec` instead")]
-#[inline(always)]
-pub fn exec_output(cmd: &str) -> Result<String> {
-    exec(cmd).c(d!())
 }
 
 #[inline(always)]
@@ -52,9 +47,12 @@ fn exec_spawn_poll(mut child: Child) -> Result<PollRet> {
     }
 }
 
-/// Execute an external command,
-/// and return its outputs after `exit`,
-/// or panic with a `timeout` error
+/// Execute an external command via `bash -c`,
+/// and return its outputs after it exits,
+/// or return an error on timeout.
+///
+/// The `cmd` string is passed directly to the shell.
+/// Do not pass unsanitized user input.
 pub fn exec_timeout(cmd: &str, timeout_milliseconds: u64) -> Result<String> {
     if 0 == timeout_milliseconds {
         return exec(cmd).c(d!());

@@ -6,6 +6,13 @@ use std::fmt;
 pub use ed25519_dalek::SigningKey as RawSignKey;
 pub use ed25519_dalek::VerifyingKey as RawVerifyKey;
 
+fn decode_bytes<const N: usize>(b64: &str) -> Result<[u8; N]> {
+    let bytes = base64::decode(b64).c(d!())?;
+    bytes
+        .try_into()
+        .map_err(|_| eg!("invalid length, expected {}", N))
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct SignKey(String);
 
@@ -23,11 +30,7 @@ pub fn create_keypair() -> (SignKey, VerifyKey) {
 
 impl SignKey {
     pub fn sign(&self, msg: &[u8]) -> Result<Sig> {
-        let sk = base64::decode(&self.0).c(d!())?;
-        let sk_bytes: [u8; 32] = sk
-            .try_into()
-            .map_err(|_| eg!("invalid key length"))
-            .c(d!())?;
+        let sk_bytes: [u8; 32] = decode_bytes(&self.0).c(d!())?;
         let sk = RawSignKey::from_bytes(&sk_bytes);
         let sig = base64::encode(sk.sign(msg).to_bytes());
         Ok(Sig(sig))
@@ -47,10 +50,7 @@ impl fmt::Display for SignKey {
 impl TryFrom<String> for SignKey {
     type Error = Box<dyn RucError>;
     fn try_from(s: String) -> Result<Self> {
-        let sk = base64::decode(&s).c(d!())?;
-        if 32 != sk.len() {
-            return Err(eg!("invalid key length"));
-        }
+        decode_bytes::<32>(&s).c(d!())?;
         Ok(Self(s))
     }
 }
@@ -58,10 +58,7 @@ impl TryFrom<String> for SignKey {
 impl TryFrom<&str> for SignKey {
     type Error = Box<dyn RucError>;
     fn try_from(s: &str) -> Result<Self> {
-        let sk = base64::decode(s).c(d!())?;
-        if 32 != sk.len() {
-            return Err(eg!("invalid key length"));
-        }
+        decode_bytes::<32>(s).c(d!())?;
         Ok(Self(s.to_owned()))
     }
 }
@@ -69,12 +66,8 @@ impl TryFrom<&str> for SignKey {
 impl TryFrom<&SignKey> for RawSignKey {
     type Error = Box<dyn RucError>;
     fn try_from(k: &SignKey) -> Result<Self> {
-        let sk = base64::decode(&k.0).c(d!())?;
-        let sk_bytes: [u8; 32] = sk
-            .try_into()
-            .map_err(|_| eg!("invalid key length"))
-            .c(d!())?;
-        Ok(RawSignKey::from_bytes(&sk_bytes))
+        let bytes: [u8; 32] = decode_bytes(&k.0).c(d!())?;
+        Ok(RawSignKey::from_bytes(&bytes))
     }
 }
 
@@ -99,11 +92,7 @@ impl From<RawSignKey> for SignKey {
 
 impl VerifyKey {
     pub fn verify(&self, sig: &Sig, msg: &[u8]) -> Result<()> {
-        let vk = base64::decode(&self.0).c(d!())?;
-        let vk_bytes: [u8; 32] = vk
-            .try_into()
-            .map_err(|_| eg!("invalid key length"))
-            .c(d!())?;
+        let vk_bytes: [u8; 32] = decode_bytes(&self.0).c(d!())?;
         let vk = RawVerifyKey::from_bytes(&vk_bytes)
             .map_err(|e| eg!(e))
             .c(d!())?;
@@ -124,12 +113,8 @@ impl fmt::Display for VerifyKey {
 impl TryFrom<String> for VerifyKey {
     type Error = Box<dyn RucError>;
     fn try_from(s: String) -> Result<Self> {
-        let vk = base64::decode(&s).c(d!())?;
-        let vk_bytes: [u8; 32] = vk
-            .try_into()
-            .map_err(|_| eg!("invalid key length"))
-            .c(d!())?;
-        RawVerifyKey::from_bytes(&vk_bytes)
+        let bytes: [u8; 32] = decode_bytes(&s).c(d!())?;
+        RawVerifyKey::from_bytes(&bytes)
             .map_err(|e| eg!(e))
             .c(d!())?;
         Ok(Self(s))
@@ -139,12 +124,8 @@ impl TryFrom<String> for VerifyKey {
 impl TryFrom<&str> for VerifyKey {
     type Error = Box<dyn RucError>;
     fn try_from(s: &str) -> Result<Self> {
-        let vk = base64::decode(s).c(d!())?;
-        let vk_bytes: [u8; 32] = vk
-            .try_into()
-            .map_err(|_| eg!("invalid key length"))
-            .c(d!())?;
-        RawVerifyKey::from_bytes(&vk_bytes)
+        let bytes: [u8; 32] = decode_bytes(s).c(d!())?;
+        RawVerifyKey::from_bytes(&bytes)
             .map_err(|e| eg!(e))
             .c(d!())?;
         Ok(Self(s.to_owned()))
@@ -154,14 +135,8 @@ impl TryFrom<&str> for VerifyKey {
 impl TryFrom<&VerifyKey> for RawVerifyKey {
     type Error = Box<dyn RucError>;
     fn try_from(k: &VerifyKey) -> Result<Self> {
-        let vk = base64::decode(&k.0).c(d!())?;
-        let vk_bytes: [u8; 32] = vk
-            .try_into()
-            .map_err(|_| eg!("invalid key length"))
-            .c(d!())?;
-        RawVerifyKey::from_bytes(&vk_bytes)
-            .map_err(|e| eg!(e))
-            .c(d!())
+        let bytes: [u8; 32] = decode_bytes(&k.0).c(d!())?;
+        RawVerifyKey::from_bytes(&bytes).map_err(|e| eg!(e)).c(d!())
     }
 }
 
@@ -189,11 +164,7 @@ pub fn verify_by_raw_vk(
     sig: &Sig,
     msg: &[u8],
 ) -> Result<()> {
-    let sig = base64::decode(&sig.0).c(d!())?;
-    let sig_bytes: [u8; 64] = sig
-        .try_into()
-        .map_err(|_| eg!("invalid signature length"))
-        .c(d!())?;
+    let sig_bytes: [u8; 64] = decode_bytes(&sig.0).c(d!())?;
     let sig = ed25519_dalek::Signature::from_bytes(&sig_bytes);
     vk.verify(msg, &sig).map_err(|e| eg!(e)).c(d!())
 }
@@ -213,10 +184,7 @@ impl fmt::Display for Sig {
 impl TryFrom<String> for Sig {
     type Error = Box<dyn RucError>;
     fn try_from(s: String) -> Result<Self> {
-        let sig = base64::decode(&s).c(d!())?;
-        if 64 != sig.len() {
-            return Err(eg!("invalid signature length"));
-        }
+        decode_bytes::<64>(&s).c(d!())?;
         Ok(Self(s))
     }
 }
@@ -224,10 +192,7 @@ impl TryFrom<String> for Sig {
 impl TryFrom<&str> for Sig {
     type Error = Box<dyn RucError>;
     fn try_from(s: &str) -> Result<Self> {
-        let sig = base64::decode(s).c(d!())?;
-        if 64 != sig.len() {
-            return Err(eg!("invalid signature length"));
-        }
+        decode_bytes::<64>(s).c(d!())?;
         Ok(Self(s.to_owned()))
     }
 }

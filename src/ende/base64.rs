@@ -15,3 +15,23 @@ pub fn decode(encoded: &str) -> Result<Vec<u8>> {
 pub fn decode_generic<T: AsRef<[u8]>>(encoded: T) -> Result<Vec<u8>> {
     BASE64_STANDARD.decode(encoded).c(d!())
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn roundtrip() {
+        let msg = b"hello world \x00\xff binary data";
+        let encoded = encode(msg);
+        let decoded = decode(&encoded).unwrap();
+        assert_eq!(decoded, msg);
+    }
+
+    #[test]
+    fn roundtrip_empty() {
+        let encoded = encode(b"");
+        let decoded = decode(&encoded).unwrap();
+        assert!(decoded.is_empty());
+    }
+}

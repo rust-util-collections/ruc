@@ -1,9 +1,11 @@
 use crate::*;
 
+/// Compress data using zstd at default compression level (3).
 pub fn zstd_compress(inputs: &[u8]) -> Result<Vec<u8>> {
     zstd::encode_all(inputs, 0).c(d!())
 }
 
+/// Decompress zstd-compressed data.
 pub fn zstd_uncompress(inputs: &[u8]) -> Result<Vec<u8>> {
     zstd::decode_all(inputs).c(d!())
 }
