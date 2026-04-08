@@ -1,2 +1,8 @@
 /target
 Cargo.lock
+
+# Claude Code: track shared configs, ignore personal/runtime files
+.claude/*
+!.claude/commands/
+!.claude/docs/
+!.claude/settings.json
