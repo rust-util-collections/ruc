@@ -71,6 +71,10 @@ Check against `module-patterns.md` security-critical locations:
 - [ ] Imports grouped at file top (std → external → crate)?
 - [ ] Trailing commas in macro invocations?
 - [ ] No unnecessary `clone()` or allocation?
+- [ ] **Doc-code alignment** — If the change adds, removes, or renames a public type, module, or subsystem path, verify docs still match. Specifically check:
+  - `CLAUDE.md` architecture table and conventions
+  - `.claude/docs/api-design-rules.md` and `.claude/docs/module-patterns.md`
+  - Doc comments and README
 
 ## Output Format
 
