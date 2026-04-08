@@ -87,7 +87,7 @@ pub trait RucError: Display + Debug + Send {
     }
 
     /// check if any node from the error_chain matches the given error
-    fn msg_has_overloop(&self, another: &dyn RucError) -> bool {
+    fn msg_has_overlap(&self, another: &dyn RucError) -> bool {
         let mut self_list = HashSet::new();
         self_list.insert(self.get_top_msg());
         let mut b = self.cause();
@@ -163,7 +163,7 @@ pub trait RucError: Display + Debug + Send {
 
     /// Generate the log string with custom mode
     fn generate_log_custom(&self, prefix: Option<&str>) -> String {
-        #[cfg(not(feature = "ansi"))]
+        #[cfg(feature = "ansi")]
         #[inline(always)]
         fn generate_log_header(ns: &str, pid: u32) -> String {
             format!(
@@ -174,7 +174,7 @@ pub trait RucError: Display + Debug + Send {
             )
         }
 
-        #[cfg(feature = "ansi")]
+        #[cfg(not(feature = "ansi"))]
         #[inline(always)]
         fn generate_log_header(ns: &str, pid: u32) -> String {
             format!(
@@ -228,7 +228,7 @@ impl<T, E: Debug + Display + Send, ERR: Display + Send + 'static>
                     Ok(ruc_err) => *ruc_err,
                     Err(_) => {
                         let inner = SimpleMsg::new(
-                            err_str, &msg.file, msg.line, msg.column,
+                            err_str, msg.file, msg.line, msg.column,
                         );
                         Box::new(SimpleError::new(inner, None))
                     }
@@ -264,6 +264,23 @@ impl<E: Debug + Display + Send + 'static> From<SimpleError<E>>
 {
     fn from(e: SimpleError<E>) -> Box<dyn RucError> {
         Box::new(e)
+    }
+}
+
+impl<E: Debug + Display + Send + 'static> std::error::Error
+    for SimpleError<E>
+{
+}
+
+impl From<&'static str> for Box<dyn RucError> {
+    fn from(s: &'static str) -> Self {
+        crate::eg!(s)
+    }
+}
+
+impl From<String> for Box<dyn RucError> {
+    fn from(s: String) -> Self {
+        crate::eg!(s)
     }
 }
 
@@ -313,7 +330,7 @@ pub struct SimpleMsg<E: Debug + Display + Send + 'static> {
     /// actual error
     pub err: E,
     /// file path
-    pub file: String,
+    pub file: &'static str,
     /// line number
     pub line: u32,
     /// column number
@@ -323,10 +340,10 @@ pub struct SimpleMsg<E: Debug + Display + Send + 'static> {
 impl<E: Debug + Display + Send + 'static> SimpleMsg<E> {
     /// create new error
     #[inline(always)]
-    pub fn new(err: E, file: &str, line: u32, column: u32) -> Self {
+    pub fn new(err: E, file: &'static str, line: u32, column: u32) -> Self {
         SimpleMsg {
             err,
-            file: file.to_owned(),
+            file,
             line,
             column,
         }
@@ -338,7 +355,7 @@ impl<E: Debug + Display + Send + 'static> Display for SimpleMsg<E> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "{0}{4}{5}file: {1}{4}{5}line: {2}{4}{6}column: {3}",
+            "\x1b[01m{0}\x1b[00m{4}{5}\x1b[01mfile:\x1b[00m {1}{4}{5}\x1b[01mline:\x1b[00m {2}{4}{6}\x1b[01mcolumn:\x1b[00m {3}",
             self.err,
             self.file,
             self.line,
@@ -353,7 +370,7 @@ impl<E: Debug + Display + Send + 'static> Display for SimpleMsg<E> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "\x1b[01m{0}\x1b[00m{4}{5}\x1b[01mfile:\x1b[00m {1}{4}{5}\x1b[01mline:\x1b[00m {2}{4}{6}\x1b[01mcolumn:\x1b[00m {3}",
+            "{0}{4}{5}file: {1}{4}{5}line: {2}{4}{6}column: {3}",
             self.err,
             self.file,
             self.line,

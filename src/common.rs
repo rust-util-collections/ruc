@@ -4,7 +4,13 @@
 //! Common and lightweight utils.
 //!
 
+use crate::*;
+use std::{fmt::Display, path::Path};
+
 /// HashMap/BTreeMap operations
+///
+/// NOTE: The `B` prefix variants (e.g. `map!{B 1 => 2}`) are deprecated.
+/// Use `bmap!` instead.
 #[macro_export]
 macro_rules! map {
     () => {{
@@ -45,6 +51,9 @@ macro_rules! bmap {
 }
 
 /// HashSet/BTreeSet operations
+///
+/// NOTE: The `B` prefix variants (e.g. `set!{B 1, 2}`) are deprecated.
+/// Use `bset!` instead.
 #[macro_export]
 macro_rules! set {
     () => {{
@@ -84,7 +93,11 @@ macro_rules! bset {
     }};
 }
 
-/// optimize readable in high-level-functions
+/// Deprecated: use `if-else` expressions directly instead.
+///
+/// This macro is a thin wrapper over `if-else` and provides no benefit
+/// over the built-in Rust syntax.
+#[deprecated(since = "10.0.0", note = "use `if-else` expressions directly")]
 #[macro_export]
 macro_rules! alt {
     ($condition: expr, $ops: block, $ops2: block $(,)*) => {{
@@ -139,7 +152,7 @@ macro_rules! sleep_ms {
     }};
 }
 
-/// get current UTC-timestamp
+/// get current UTC-timestamp in seconds
 #[macro_export]
 macro_rules! ts {
     () => {{
@@ -150,6 +163,17 @@ macro_rules! ts {
     }};
 }
 
+/// get current UTC-timestamp in milliseconds
+#[macro_export]
+macro_rules! ts_ms {
+    () => {{
+        std::time::SystemTime::now()
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64
+    }};
+}
+
 /// Cached local UTC offset, detected once at first access.
 /// Falls back to UTC if detection fails (e.g., in multi-threaded context).
 static LOCAL_OFFSET: std::sync::LazyLock<time::UtcOffset> =
@@ -157,14 +181,19 @@ static LOCAL_OFFSET: std::sync::LazyLock<time::UtcOffset> =
         time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC)
     });
 
+static DATETIME_FORMAT: std::sync::LazyLock<
+    Vec<time::format_description::FormatItem<'static>>,
+> = std::sync::LazyLock::new(|| {
+    time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]").unwrap()
+});
+
 /// Generate a formatted DateTime string
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
-    let format = time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]").unwrap();
     time::OffsetDateTime::from_unix_timestamp(ts)
         .unwrap()
         .to_offset(*LOCAL_OFFSET)
-        .format(&format)
+        .format(&*DATETIME_FORMAT)
         .unwrap()
 }
 
@@ -175,8 +204,86 @@ macro_rules! datetime {
     () => {{ $crate::datetime!($crate::ts!()) }};
 }
 
+/// Get an environment variable or return a default value
+#[inline(always)]
+pub fn env_or(key: &str, default: &str) -> String {
+    std::env::var(key).unwrap_or_else(|_| default.to_owned())
+}
+
+/// Read a file to string, wrapping errors with ruc error chain
+#[inline(always)]
+pub fn read_file<P: AsRef<Path>>(path: P) -> Result<String> {
+    std::fs::read_to_string(path.as_ref()).c(d!())
+}
+
+/// Write contents to a file, wrapping errors with ruc error chain
+#[inline(always)]
+pub fn write_file<P: AsRef<Path>>(
+    path: P,
+    content: impl AsRef<[u8]>,
+) -> Result<()> {
+    std::fs::write(path.as_ref(), content).c(d!())
+}
+
+/// Retry a fallible operation with fixed delay between attempts.
+///
+/// Returns the first successful result, or the last error wrapped in ruc error chain.
+pub fn retry<T, E, F>(times: usize, delay_ms: u64, mut f: F) -> Result<T>
+where
+    F: FnMut() -> core::result::Result<T, E>,
+    E: Display + Send + 'static,
+{
+    let total = times.max(1);
+    let mut last_err = None;
+    for i in 0..total {
+        match f() {
+            Ok(v) => return Ok(v),
+            Err(e) => {
+                last_err = Some(e);
+                if i + 1 < total && delay_ms > 0 {
+                    sleep_ms!(delay_ms);
+                }
+            }
+        }
+    }
+    Err(eg!(last_err.unwrap()))
+}
+
+/// Ensure a condition is true, otherwise return an error.
+///
+/// Similar to `anyhow::ensure!` but returns `ruc::Result`.
+///
+/// # Examples
+///
+/// ```
+/// use ruc::*;
+///
+/// fn check(x: i32) -> Result<()> {
+///     ensure!(x > 0);
+///     ensure!(x < 100, "x must be less than 100");
+///     ensure!(x != 42, "x must not be {}", 42);
+///     Ok(())
+/// }
+/// ```
+#[macro_export]
+macro_rules! ensure {
+    ($cond:expr, $fmt:expr, $($arg:tt)*) => {{
+        if !$cond {
+            return Err($crate::eg!($fmt, $($arg)*));
+        }
+    }};
+    ($cond:expr, $msg:expr) => {{
+        $crate::ensure!($cond, "{}", $msg)
+    }};
+    ($cond:expr) => {{
+        $crate::ensure!($cond, concat!("ensure failed: ", stringify!($cond)))
+    }};
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn t_max_min() {
         assert_eq!(10, max!(1, 10,));
@@ -204,6 +311,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn t_alt() {
         let a = alt!(true, 1, 2,);
         let b = alt!(true, 1, 2);
@@ -238,18 +346,14 @@ mod tests {
 
     #[test]
     fn t_bmap_bset() {
-        // Test bmap!
-        // Single element
         let m1 = bmap! {"a" => 1};
         assert_eq!(m1.len(), 1);
         assert_eq!(m1.get("a"), Some(&1));
 
-        // Multiple elements
         let m2 = bmap! {"a" => 1, "b" => 2};
         assert_eq!(m2.len(), 2);
         assert_eq!(m2.get("b"), Some(&2));
 
-        // Multiple elements with trailing comma
         let m3 = bmap! {
             "a" => 1,
             "b" => 2,
@@ -258,20 +362,83 @@ mod tests {
         assert_eq!(m3.len(), 3);
         assert_eq!(m3.get("c"), Some(&3));
 
-        // Test bset!
-        // Single element
         let s1 = bset! {1};
         assert_eq!(s1.len(), 1);
         assert!(s1.contains(&1));
 
-        // Multiple elements
         let s2 = bset! {1, 2};
         assert_eq!(s2.len(), 2);
         assert!(s2.contains(&2));
 
-        // Multiple elements with trailing comma
         let s3 = bset! {1, 2, 3,};
         assert_eq!(s3.len(), 3);
         assert!(s3.contains(&3));
+    }
+
+    #[test]
+    fn t_ts_ms() {
+        let ms = ts_ms!();
+        let s = ts!();
+        // ms should be roughly s * 1000 (within 2 seconds)
+        assert!(ms / 1000 >= s - 2);
+        assert!(ms / 1000 <= s + 2);
+    }
+
+    #[test]
+    fn t_env_or() {
+        // SAFETY: test runs single-threaded, no concurrent env access
+        unsafe { std::env::set_var("RUC_TEST_ENV_OR", "hello") };
+        assert_eq!(env_or("RUC_TEST_ENV_OR", "default"), "hello");
+        unsafe { std::env::remove_var("RUC_TEST_ENV_OR") };
+        assert_eq!(env_or("RUC_TEST_ENV_OR_NONEXIST", "default"), "default");
+    }
+
+    #[test]
+    fn t_retry_success() {
+        let mut count = 0;
+        let result = retry(3, 0, || -> core::result::Result<i32, String> {
+            count += 1;
+            if count < 3 {
+                Err("not yet".to_owned())
+            } else {
+                Ok(42)
+            }
+        });
+        assert_eq!(result.unwrap(), 42);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn t_retry_failure() {
+        let result = retry(2, 0, || -> core::result::Result<i32, String> {
+            Err("fail".to_owned())
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn t_ensure() {
+        fn check_ok() -> crate::err::Result<()> {
+            ensure!(true);
+            ensure!(1 > 0, "positive");
+            ensure!(2 + 2 == 4, "math: {} + {} = {}", 2, 2, 4);
+            Ok(())
+        }
+        fn check_fail() -> crate::err::Result<()> {
+            ensure!(false, "should fail");
+            Ok(())
+        }
+        assert!(check_ok().is_ok());
+        assert!(check_fail().is_err());
+    }
+
+    #[test]
+    fn t_file_utils() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("ruc_test_file_utils.txt");
+        write_file(&path, "hello ruc").unwrap();
+        let content = read_file(&path).unwrap();
+        assert_eq!(content, "hello ruc");
+        std::fs::remove_file(&path).ok();
     }
 }

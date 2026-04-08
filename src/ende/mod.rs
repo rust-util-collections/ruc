@@ -9,6 +9,9 @@ pub mod base64;
 #[cfg(feature = "ende_compress")]
 pub mod compress;
 
+#[cfg(feature = "ende_zstd")]
+pub mod zstd;
+
 #[cfg(feature = "ende_json")]
 pub mod json;
 

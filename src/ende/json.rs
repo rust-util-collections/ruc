@@ -10,6 +10,14 @@ where
 }
 
 #[inline(always)]
+pub fn json_encode_str<T>(t: &T) -> Result<String>
+where
+    T: Serialize,
+{
+    serde_json::to_string(&t).c(d!())
+}
+
+#[inline(always)]
 pub fn json_decode<T>(bytes: &[u8]) -> Result<T>
 where
     T: for<'a> Deserialize<'a>,

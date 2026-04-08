@@ -17,13 +17,21 @@ static TIME_OUT: LazyLock<Duration> = LazyLock::new(|| {
     Duration::from_secs(secs as u64)
 });
 
+static HTTP_CLI: LazyLock<Client> = LazyLock::new(|| {
+    ClientBuilder::new()
+        .timeout(*TIME_OUT)
+        .http1_only()
+        .build()
+        .unwrap()
+});
+
 pub fn get(
     url: &str,
-    headers: Option<&[(&'static str, &'static str)]>,
+    headers: Option<&[(&str, &str)]>,
 ) -> Result<(StatusCode, Vec<u8>)> {
-    let mut builder = http_cli().get(url);
+    let mut builder = HTTP_CLI.get(url);
     if let Some(headers) = headers {
-        for (h, v) in headers.iter().copied() {
+        for &(h, v) in headers.iter() {
             builder = builder.header(h, v);
         }
     }
@@ -35,7 +43,7 @@ pub fn get(
 
 pub fn get_resp_str(
     url: &str,
-    headers: Option<&[(&'static str, &'static str)]>,
+    headers: Option<&[(&str, &str)]>,
 ) -> Result<(StatusCode, String)> {
     get(url, headers)
         .c(d!())
@@ -45,11 +53,11 @@ pub fn get_resp_str(
 pub fn post(
     url: &str,
     body: &[u8],
-    headers: Option<&[(&'static str, &'static str)]>,
+    headers: Option<&[(&str, &str)]>,
 ) -> Result<(StatusCode, Vec<u8>)> {
-    let mut builder = http_cli().post(url);
+    let mut builder = HTTP_CLI.post(url);
     if let Some(headers) = headers {
-        for (h, v) in headers.iter().copied() {
+        for &(h, v) in headers.iter() {
             builder = builder.header(h, v);
         }
     }
@@ -76,17 +84,9 @@ pub fn post(
 pub fn post_resp_str(
     url: &str,
     body: &[u8],
-    headers: Option<&[(&'static str, &'static str)]>,
+    headers: Option<&[(&str, &str)]>,
 ) -> Result<(StatusCode, String)> {
     post(url, body, headers)
         .c(d!())
         .map(|(code, msg)| (code, String::from_utf8_lossy(&msg).into_owned()))
-}
-
-fn http_cli() -> Client {
-    ClientBuilder::new()
-        .timeout(*TIME_OUT)
-        .http1_only()
-        .build()
-        .unwrap()
 }

@@ -62,7 +62,7 @@ impl RemoteHost<'_> {
             .ok()
             .and_then(|t| info!(t.parse::<u32>(), t).ok())
             .unwrap_or(20);
-        sess.set_timeout(timeout.max(300) * 1000);
+        sess.set_timeout(timeout.min(300) * 1000);
         sess.set_blocking(true);
 
         Ok(sess)

@@ -95,79 +95,104 @@ impl UauSock {
             .map(|_| ())
     }
 
+    /// Receive msg with a const-generic sized buffer, returning data and peer address
+    #[inline(always)]
+    pub fn recv_buf<const N: usize>(&self) -> Result<(Vec<u8>, UnixAddr)> {
+        let mut buf = [0u8; N];
+        self.recv(&mut buf)
+            .c(d!())
+            .map(|(n, peer)| (buf[..n].to_vec(), peer))
+    }
+
+    /// Receive msg with a const-generic sized buffer, discarding peer address
+    #[inline(always)]
+    pub fn recvonly_buf<const N: usize>(&self) -> Result<Vec<u8>> {
+        self.recv_buf::<N>().map(|(b, _)| b)
+    }
+
     /// Receive msg with a 64-bytes buffer
+    #[deprecated(since = "10.0.0", note = "use `recv_buf::<64>()` instead")]
     #[inline(always)]
     pub fn recv_64(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        let mut buf = [0u8; 64];
-        self.recv(&mut buf)
-            .c(d!())
-            .map(|(n, peer)| (buf[..n].to_vec(), peer))
+        self.recv_buf::<64>()
     }
 
     /// Receive msg with a 128-bytes buffer
+    #[deprecated(since = "10.0.0", note = "use `recv_buf::<128>()` instead")]
     #[inline(always)]
     pub fn recv_128(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        let mut buf = [0u8; 128];
-        self.recv(&mut buf)
-            .c(d!())
-            .map(|(n, peer)| (buf[..n].to_vec(), peer))
+        self.recv_buf::<128>()
     }
 
     /// Receive msg with a 256-bytes buffer
+    #[deprecated(since = "10.0.0", note = "use `recv_buf::<256>()` instead")]
     #[inline(always)]
     pub fn recv_256(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        let mut buf = [0u8; 256];
-        self.recv(&mut buf)
-            .c(d!())
-            .map(|(n, peer)| (buf[..n].to_vec(), peer))
+        self.recv_buf::<256>()
     }
 
     /// Receive msg with a 512-bytes buffer
+    #[deprecated(since = "10.0.0", note = "use `recv_buf::<512>()` instead")]
     #[inline(always)]
     pub fn recv_512(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        let mut buf = [0u8; 512];
-        self.recv(&mut buf)
-            .c(d!())
-            .map(|(n, peer)| (buf[..n].to_vec(), peer))
+        self.recv_buf::<512>()
     }
 
     /// Receive msg with a 1024-bytes buffer
+    #[deprecated(since = "10.0.0", note = "use `recv_buf::<1024>()` instead")]
     #[inline(always)]
     pub fn recv_1024(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        let mut buf = [0u8; 1024];
-        self.recv(&mut buf)
-            .c(d!())
-            .map(|(n, peer)| (buf[..n].to_vec(), peer))
+        self.recv_buf::<1024>()
     }
 
     /// Receive msg with a 64-bytes buffer
+    #[deprecated(
+        since = "10.0.0",
+        note = "use `recvonly_buf::<64>()` instead"
+    )]
     #[inline(always)]
     pub fn recvonly_64(&self) -> Result<Vec<u8>> {
-        self.recv_64().map(|(b, _)| b)
+        self.recvonly_buf::<64>()
     }
 
     /// Receive msg with a 128-bytes buffer
+    #[deprecated(
+        since = "10.0.0",
+        note = "use `recvonly_buf::<128>()` instead"
+    )]
     #[inline(always)]
     pub fn recvonly_128(&self) -> Result<Vec<u8>> {
-        self.recv_128().map(|(b, _)| b)
+        self.recvonly_buf::<128>()
     }
 
     /// Receive msg with a 256-bytes buffer
+    #[deprecated(
+        since = "10.0.0",
+        note = "use `recvonly_buf::<256>()` instead"
+    )]
     #[inline(always)]
     pub fn recvonly_256(&self) -> Result<Vec<u8>> {
-        self.recv_256().map(|(b, _)| b)
+        self.recvonly_buf::<256>()
     }
 
     /// Receive msg with a 512-bytes buffer
+    #[deprecated(
+        since = "10.0.0",
+        note = "use `recvonly_buf::<512>()` instead"
+    )]
     #[inline(always)]
     pub fn recvonly_512(&self) -> Result<Vec<u8>> {
-        self.recv_512().map(|(b, _)| b)
+        self.recvonly_buf::<512>()
     }
 
     /// Receive msg with a 1024-bytes buffer
+    #[deprecated(
+        since = "10.0.0",
+        note = "use `recvonly_buf::<1024>()` instead"
+    )]
     #[inline(always)]
     pub fn recvonly_1024(&self) -> Result<Vec<u8>> {
-        self.recv_1024().map(|(b, _)| b)
+        self.recvonly_buf::<1024>()
     }
 
     /// Receive msg with a given buffer
@@ -191,6 +216,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[allow(deprecated)]
     fn t_send_recv() {
         let sender = pnk!(UauSock::create(None));
         let receiver = pnk!(UauSock::create(None));
@@ -223,6 +249,24 @@ mod test {
         assert_eq!(
             &987654321_u32.to_ne_bytes()[..],
             &pnk!(receiver.recvonly_1024())
+        );
+    }
+
+    #[test]
+    fn t_send_recv_const_generic() {
+        let sender = pnk!(UauSock::create(None));
+        let receiver = pnk!(UauSock::create(None));
+
+        pnk!(sender.send(&987654321_u32.to_ne_bytes()[..], receiver.addr()));
+        assert_eq!(
+            &987654321_u32.to_ne_bytes()[..],
+            &pnk!(receiver.recvonly_buf::<64>())
+        );
+
+        pnk!(sender.send(&987654321_u32.to_ne_bytes()[..], receiver.addr()));
+        assert_eq!(
+            &987654321_u32.to_ne_bytes()[..],
+            &pnk!(receiver.recvonly_buf::<256>())
         );
     }
 }

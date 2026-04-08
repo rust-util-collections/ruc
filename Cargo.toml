@@ -1,6 +1,6 @@
 [package]
 name = "ruc"
-version = "9.3.1"
+version = "10.0.0"
 authors = ["hui.fan@mail.ru"]
 edition = "2024"
 description = "Rust Util Collections"
@@ -14,6 +14,7 @@ repository = "https://github.com/rust-util-collections/ruc.git"
 features = ["full"]
 
 [dependencies]
+sha2 = { version = "0.10", optional = true }
 sha3 = { version = "0.10.8", optional = true }
 
 ed25519-dalek = { version = "2.2", optional = true }
@@ -23,6 +24,7 @@ base64 = { version = "0.22.1", optional = true }
 hex = { version = "0.4.3", optional = true }
 
 flate2 = { version = "1.1.9", optional = true }
+zstd = { version = "0.13", optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 
 time = { version = "0.3.47", features = ["formatting", "local-offset"] }
@@ -68,7 +70,8 @@ algo_ed25519 = [
 algo_aes = [
 	"ende_base64",
 	"aes-gcm",
-	"algo_hash"
+	"algo_hash",
+	"rand"
 ]
 
 algo_rand = [
@@ -76,14 +79,16 @@ algo_rand = [
 	"ende_hex"
 ]
 
-algo_hash = [ "algo_keccak" ]
+algo_hash = [ "algo_keccak", "algo_sha256" ]
 
 algo_keccak = [ "sha3" ]
+algo_sha256 = [ "sha2" ]
 
 ende = [
     "ende_hex",
     "ende_base64",
     "ende_compress",
+    "ende_zstd",
     "ende_json",
     "ende_msgpack",
     "ende_transcode",
@@ -92,6 +97,7 @@ ende = [
 ende_hex = [ "hex" ]
 ende_base64 = [ "base64" ]
 ende_compress = [ "flate2" ]
+ende_zstd = [ "zstd" ]
 
 ende_json = [ "serde", "serde_json" ]
 ende_msgpack = [ "serde", "rmp" ]
