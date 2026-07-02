@@ -203,19 +203,29 @@ pub trait RucError: Display + Debug + Send {
 /// Works with any error type that implements `Display + Send + 'static`,
 /// including `String`, `&str`, `io::Error`, `anyhow::Error`,
 /// and `Box<dyn RucError>` from different ruc versions.
-pub trait RucResult<T, E: Debug + Display + Send> {
+pub trait RucResult<T, E: Debug + Display + Send + 'static> {
     /// Shorter alias for 'chain_error'
     fn c(self, msg: SimpleMsg<E>) -> Result<T>;
+
+    /// Lazy variant of [`c`](Self::c): the context message is only
+    /// built on the error path, e.g. `.c_with(|| d!("id: {}", id))` —
+    /// nothing is allocated when the value is `Ok`/`Some`.
+    fn c_with<F: FnOnce() -> SimpleMsg<E>>(self, f: F) -> Result<T>;
 }
 
-impl<T, E: Debug + Display + Send> RucResult<T, E> for Option<T> {
+impl<T, E: Debug + Display + Send + 'static> RucResult<T, E> for Option<T> {
     #[inline(always)]
     fn c(self, msg: SimpleMsg<E>) -> Result<T> {
         self.ok_or_else(|| SimpleError::new(msg, None).into())
     }
+
+    #[inline(always)]
+    fn c_with<F: FnOnce() -> SimpleMsg<E>>(self, f: F) -> Result<T> {
+        self.ok_or_else(|| SimpleError::new(f(), None).into())
+    }
 }
 
-impl<T, E: Debug + Display + Send, ERR: Display + Send + 'static>
+impl<T, E: Debug + Display + Send + 'static, ERR: Display + Send + 'static>
     RucResult<T, E> for core::result::Result<T, ERR>
 {
     #[inline(always)]
@@ -235,6 +245,14 @@ impl<T, E: Debug + Display + Send, ERR: Display + Send + 'static>
                 };
             SimpleError::new(msg, Some(cause)).into()
         })
+    }
+
+    #[inline(always)]
+    fn c_with<F: FnOnce() -> SimpleMsg<E>>(self, f: F) -> Result<T> {
+        match self {
+            Ok(v) => Ok(v),
+            Err(e) => Err(e).c(f()),
+        }
     }
 }
 
@@ -405,6 +423,8 @@ fn get_pidns(pid: u32) -> Result<String> {
 
 #[inline(always)]
 #[cfg(not(target_os = "linux"))]
+// the Result wrapper is required for signature parity
+// with the Linux implementation above
 #[allow(clippy::unnecessary_wraps)]
 fn get_pidns(_pid: u32) -> Result<String> {
     Ok("NULL".to_owned())
@@ -504,6 +524,23 @@ mod test {
         assert!(r.is_err());
         let e = r.unwrap_err();
         assert!(e.get_lowest_msg().contains("string error"));
+    }
+
+    #[test]
+    fn t_c_with_lazy() {
+        // closure must NOT run on the Ok/Some path
+        let ok: core::result::Result<u8, String> = Ok(1);
+        let v = ok.c_with(|| -> SimpleMsg<&str> { unreachable!() });
+        assert_eq!(v.unwrap(), 1);
+
+        let some = Some(1u8);
+        let v = some.c_with(|| -> SimpleMsg<&str> { unreachable!() });
+        assert_eq!(v.unwrap(), 1);
+
+        // and must run on the Err/None path
+        let err: core::result::Result<u8, String> = Err("boom".to_owned());
+        assert!(err.c_with(|| crate::d!("lazy ctx")).is_err());
+        assert!(None::<u8>.c_with(|| crate::d!("lazy ctx")).is_err());
     }
 
     #[test]

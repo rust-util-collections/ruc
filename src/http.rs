@@ -8,6 +8,9 @@ use reqwest::{
 use std::{env, sync::LazyLock, time::Duration};
 
 static TIME_OUT: LazyLock<Duration> = LazyLock::new(|| {
+    // `RUC_HTTP_TIMEOUT`: seconds, default 3, max 255;
+    // unparsable or out-of-range values fall back to 3;
+    // read once at the first request, later changes have no effect
     let default = 3;
     let secs = if let Ok(t) = env::var("RUC_HTTP_TIMEOUT") {
         t.parse::<u8>().unwrap_or(default)

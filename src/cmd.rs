@@ -5,12 +5,7 @@
 //!
 
 use crate::*;
-use std::process::{Child, Command, Output, Stdio};
-
-enum PollRet {
-    Ready(Output),
-    NotReady(Child),
-}
+use std::process::{Child, Command, Stdio};
 
 /// Execute an external command via `bash -c`,
 /// and return its outputs after it exits.
@@ -38,13 +33,11 @@ fn exec_spawn(cmd: &str) -> Result<Child> {
         .c(d!())
 }
 
+// Kill the child and reap it, avoiding zombie/orphan processes.
 #[inline(always)]
-fn exec_spawn_poll(mut child: Child) -> Result<PollRet> {
-    match child.try_wait() {
-        Ok(Some(_)) => Ok(PollRet::Ready(child.wait_with_output().c(d!())?)),
-        Ok(None) => Ok(PollRet::NotReady(child)), // Status not ready yet
-        Err(e) => Err(eg!(e)),                    // Error occur!
-    }
+fn kill_and_reap(child: &mut Child) {
+    info_omit!(child.kill());
+    info_omit!(child.wait());
 }
 
 /// Execute an external command via `bash -c`,
@@ -71,8 +64,9 @@ pub fn exec_timeout(cmd: &str, timeout_milliseconds: u64) -> Result<String> {
     sleep_ms!(pre_wait_time);
 
     loop {
-        match exec_spawn_poll(child).c(d!())? {
-            PollRet::Ready(o) => {
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                let o = child.wait_with_output().c(d!())?;
                 if o.status.success() {
                     return Ok(String::from_utf8_lossy(&o.stdout).into_owned());
                 } else {
@@ -81,15 +75,19 @@ pub fn exec_timeout(cmd: &str, timeout_milliseconds: u64) -> Result<String> {
                     ));
                 }
             }
-            PollRet::NotReady(c) => {
-                child = c;
+            Ok(None) => {
+                // Status not ready yet
                 if 0 < try_times {
                     try_times -= 1;
                     sleep_ms!(100);
                 } else {
-                    info_omit!(child.kill());
+                    kill_and_reap(&mut child);
                     return Err(eg!("Process time out!"));
                 }
+            }
+            Err(e) => {
+                kill_and_reap(&mut child);
+                return Err(eg!(e));
             }
         }
     }

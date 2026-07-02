@@ -1,6 +1,7 @@
 use crate::*;
 use std::io::Write;
 
+/// Convert JSON bytes to MessagePack bytes.
 pub fn convert_json_to_msgpack(json: &[u8]) -> Result<Vec<u8>> {
     let mut ret = vec![];
 
@@ -13,6 +14,11 @@ pub fn convert_json_to_msgpack(json: &[u8]) -> Result<Vec<u8>> {
         .map(|_| ret)
 }
 
+/// Convert MessagePack bytes to JSON bytes.
+///
+/// NOTE: JSON map keys are always strings, so a msgpack map like
+/// `{1: "a"}` comes out as `{"1": "a"}` — converting back will not
+/// restore the integer key.
 pub fn convert_msgpack_to_json(msgpack: &[u8]) -> Result<Vec<u8>> {
     let mut ret = vec![];
 
@@ -81,5 +87,20 @@ mod tests {
             super::convert_msgpack_to_json(&msgpack_bytes).unwrap();
         let recovered: Foo = serde_json::from_slice(&json_back).unwrap();
         assert_eq!(original, recovered);
+    }
+
+    #[test]
+    fn t_invalid_inputs() {
+        assert!(super::convert_json_to_msgpack(b"{broken json").is_err());
+        assert!(super::convert_msgpack_to_json(&[0xc1]).is_err());
+    }
+
+    // pin the documented behavior: integer map keys become strings
+    #[test]
+    fn t_msgpack_int_key_becomes_string() {
+        // {1: "a"} in msgpack
+        let msgpack_bytes = [0x81, 0x01, 0xa1, b'a'];
+        let json = super::convert_msgpack_to_json(&msgpack_bytes).unwrap();
+        assert_eq!(&json, br#"{"1":"a"}"#);
     }
 }

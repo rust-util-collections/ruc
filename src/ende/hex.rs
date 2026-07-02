@@ -26,4 +26,15 @@ mod test {
         let decoded = decode(&encoded).unwrap();
         assert_eq!(decoded.as_slice(), msg.as_bytes());
     }
+
+    #[test]
+    fn ende_empty() {
+        assert!(decode(&encode(b"")).unwrap().is_empty());
+    }
+
+    #[test]
+    fn decode_invalid() {
+        assert!(decode("not hex!").is_err());
+        assert!(decode("abc").is_err()); // odd length
+    }
 }

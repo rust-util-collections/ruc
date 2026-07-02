@@ -8,7 +8,7 @@
 #[macro_export]
 macro_rules! info {
     ($ops: expr, $fmt: expr, $($arg:tt)*) => {{
-        $ops.c($crate::d!($fmt, $($arg)*)).map_err(|e| {
+        $crate::err::RucResult::c($ops, $crate::d!($fmt, $($arg)*)).map_err(|e| {
             if "INFO" == $crate::LOG_LEVEL.as_str() {
                 e.print(Some("INFO"));
             }
@@ -100,7 +100,8 @@ macro_rules! die {
 #[macro_export]
 macro_rules! pnk {
     ($ops: expr, $fmt: expr, $($arg:tt)*) => {{
-        $ops.c($crate::d!($fmt, $($arg)*)).unwrap_or_else(|e| e.print_die())
+        $crate::err::RucResult::c($ops, $crate::d!($fmt, $($arg)*))
+            .unwrap_or_else(|e| e.print_die())
     }};
     ($ops: expr, $msg: expr) => {{
         $crate::pnk!($ops, "{}", $msg)
@@ -151,7 +152,7 @@ mod tests {
     #[test]
     fn t_macros() {
         let s1 = map! {1 => 2, 2 => 4};
-        let s2 = map! {B 1 => 2, 2 => 4};
+        let s2 = bmap! {1 => 2, 2 => 4};
         assert_eq!(s1.len(), s2.len());
         for (idx, (k, v)) in s2.into_iter().enumerate() {
             assert_eq!(1 + idx, k);

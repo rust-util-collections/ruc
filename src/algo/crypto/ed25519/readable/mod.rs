@@ -225,4 +225,20 @@ mod test {
         assert!(SignKey::try_from(sk.to_string()).is_ok());
         assert!(VerifyKey::try_from(vk.to_string()).is_ok());
     }
+
+    // valid base64 but wrong decoded length must be rejected
+    #[test]
+    fn parse_wrong_length() {
+        use crate::ende::base64;
+
+        for n in [31, 33] {
+            let s = base64::encode(vec![0u8; n]);
+            assert!(SignKey::try_from(s.clone()).is_err());
+            assert!(VerifyKey::try_from(s).is_err());
+        }
+        for n in [63, 65] {
+            let s = base64::encode(vec![0u8; n]);
+            assert!(Sig::try_from(s.as_str()).is_err());
+        }
+    }
 }

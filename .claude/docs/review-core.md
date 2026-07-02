@@ -125,9 +125,9 @@ New/changed public APIs must follow the house style:
 ### 4.4 Code Style Rules
 
 These are enforced project conventions — violations are findings (severity LOW):
-- **No new `#[allow(...)]`** — `#![deny(warnings)]` is the law; fix at the source
-- **Grouped imports**: std → external → crate; merge common prefixes
-- **Macros**: `$crate::` paths (never `crate::`), trailing-comma support `$(,)*`
+- **No new `#[allow(...)]`** — `#![deny(warnings)]` is the law; fix at the source (documented cfg-parity exceptions aside)
+- **Import grouping**: the `use crate::*;` prelude comes first, then std, then external crates; merge common prefixes
+- **Macros**: `$crate::` paths (never `crate::` or unqualified sibling macros), trailing-comma support `$(,)*`
 - **rustfmt**: `max_width = 79` (run `make fmt`)
 - **Doc-code alignment**: public API changes must update doc comments, `README.md`,
   `doc/*.md`, `CLAUDE.md` (layout/feature/env tables), the Phase 1 mapping table

@@ -7,110 +7,69 @@
 use crate::*;
 use std::{fmt::Display, path::Path};
 
-/// HashMap/BTreeMap operations
+/// HashMap literal, e.g. `map!{1 => 2}`.
 ///
-/// NOTE: The `B` prefix variants (e.g. `map!{B 1 => 2}`) are deprecated.
-/// Use `bmap!` instead.
+/// `map!(||)` returns the `HashMap::new` constructor itself.
 #[macro_export]
 macro_rules! map {
     () => {{
         std::collections::HashMap::new()
     }};
-    (B) => {{
-        std::collections::BTreeMap::new()
-    }};
     ($(||)+) => {{
         std::collections::HashMap::new
     }};
-    (B $(||)+) => {{
-        std::collections::BTreeMap::new
-    }};
     ($($k: expr => $v: expr),+ $(,)*) => {{
-        let mut m = std::collections::HashMap::with_capacity([$(&$k),*].len());
-        $(m.insert($k, $v);)*
-        m
-    }};
-    (B $($k: expr => $v: expr),+ $(,)*) => {{
-        let mut m = map! {B};
+        let mut m = std::collections::HashMap::with_capacity(
+            [$(stringify!($k)),*].len(),
+        );
         $(m.insert($k, $v);)*
         m
     }};
 }
 
-/// BTreeMap operations
+/// BTreeMap literal, e.g. `bmap!{1 => 2}`.
 #[macro_export]
 macro_rules! bmap {
     () => {{
         std::collections::BTreeMap::new()
     }};
     ($($k: expr => $v: expr),+ $(,)*) => {{
-        let mut m = bmap! {};
+        let mut m = $crate::bmap! {};
         $(m.insert($k, $v);)*
         m
     }};
 }
 
-/// HashSet/BTreeSet operations
+/// HashSet literal, e.g. `set!{1, 2}`.
 ///
-/// NOTE: The `B` prefix variants (e.g. `set!{B 1, 2}`) are deprecated.
-/// Use `bset!` instead.
+/// `set!(||)` returns the `HashSet::new` constructor itself.
 #[macro_export]
 macro_rules! set {
     () => {{
         std::collections::HashSet::new()
     }};
-    (B) => {{
-        std::collections::BTreeSet::new()
-    }};
     ($(||)+) => {{
         std::collections::HashSet::new
     }};
-    (B $(||)+) => {{
-        std::collections::BTreeSet::new
-    }};
     ($($k: expr),+ $(,)*) => {{
-        let mut m = std::collections::HashSet::with_capacity([$(&$k),*].len());
-        $(m.insert($k);)*
-        m
-    }};
-    (B $($k: expr),+ $(,)*) => {{
-        let mut m = set! {B};
+        let mut m = std::collections::HashSet::with_capacity(
+            [$(stringify!($k)),*].len(),
+        );
         $(m.insert($k);)*
         m
     }};
 }
 
-/// BTreeSet operations
+/// BTreeSet literal, e.g. `bset!{1, 2}`.
 #[macro_export]
 macro_rules! bset {
     () => {{
         std::collections::BTreeSet::new()
     }};
     ($($k: expr),+ $(,)*) => {{
-        let mut m = bset! {};
+        let mut m = $crate::bset! {};
         $(m.insert($k);)*
         m
-    }};
-}
-
-/// Deprecated: use `if-else` expressions directly instead.
-///
-/// This macro is a thin wrapper over `if-else` and provides no benefit
-/// over the built-in Rust syntax.
-#[deprecated(since = "10.0.0", note = "use `if-else` expressions directly")]
-#[macro_export]
-macro_rules! alt {
-    ($condition: expr, $ops: block, $ops2: block $(,)*) => {{
-        if $condition $ops else $ops2
-    }};
-    ($condition: expr, $ops: block $(,)*) => {{
-        if $condition $ops
-    }};
-    ($condition: expr, $ops: expr, $ops2: expr $(,)*) => {{
-        if $condition { $ops } else { $ops2 }
-    }};
-    ($condition: expr, $ops: expr $(,)*) => {{
-        if $condition { $ops }
     }};
 }
 
@@ -188,9 +147,21 @@ static DATETIME_FORMAT: std::sync::LazyLock<
 });
 
 /// Generate a formatted DateTime string
+///
+/// Timestamps outside the representable datetime range are saturated
+/// to the minimum/maximum representable datetime instead of panicking.
 #[inline(always)]
 pub fn gen_datetime(ts: i64) -> String {
-    time::OffsetDateTime::from_unix_timestamp(ts)
+    // 1-day margin keeps the later `to_offset` conversion
+    // in range for any possible local offset
+    let margin = 86_400;
+    let min =
+        time::PrimitiveDateTime::MIN.assume_utc().unix_timestamp() + margin;
+    let max =
+        time::PrimitiveDateTime::MAX.assume_utc().unix_timestamp() - margin;
+
+    // safe: ts is clamped into the representable range
+    time::OffsetDateTime::from_unix_timestamp(ts.clamp(min, max))
         .unwrap()
         .to_offset(*LOCAL_OFFSET)
         .format(&*DATETIME_FORMAT)
@@ -306,19 +277,28 @@ mod tests {
         let b = set! {1, 2, 3};
         assert_eq!(b.len(), 3);
 
-        let b = set! {B 1, 2, 3};
+        let b = bset! {1, 2, 3};
         assert_eq!(b.len(), 3);
     }
 
+    // element expressions must be evaluated exactly once
     #[test]
-    #[allow(deprecated)]
-    fn t_alt() {
-        let a = alt!(true, 1, 2,);
-        let b = alt!(true, 1, 2);
-        let c = alt!(false, 1, 2,);
-        assert_eq!(a, b);
-        assert_ne!(a, c);
-        assert_eq!(a * 2, c);
+    fn t_map_set_single_evaluation() {
+        let mut i = 0;
+        let m = map! {
+            { i += 1; i } => 10,
+            { i += 1; i } => 20,
+        };
+        assert_eq!(i, 2);
+        assert_eq!(m.len(), 2);
+        assert_eq!(m[&1], 10);
+        assert_eq!(m[&2], 20);
+
+        let mut j = 0;
+        let s = set! { { j += 1; j }, { j += 1; j } };
+        assert_eq!(j, 2);
+        assert_eq!(s.len(), 2);
+        assert!(s.contains(&1) && s.contains(&2));
     }
 
     #[cfg(unix)]
@@ -382,6 +362,17 @@ mod tests {
         // ms should be roughly s * 1000 (within 2 seconds)
         assert!(ms / 1000 >= s - 2);
         assert!(ms / 1000 <= s + 2);
+    }
+
+    // out-of-range timestamps saturate instead of panicking
+    #[test]
+    fn t_gen_datetime_extreme_ts() {
+        assert!(!gen_datetime(0).is_empty());
+        assert!(!gen_datetime(i64::MAX).is_empty());
+        assert!(!gen_datetime(i64::MIN).is_empty());
+        // in-range boundary values must survive `to_offset` too
+        assert!(!gen_datetime(253402300799).is_empty()); // 9999-12-31 UTC
+        assert!(!gen_datetime(-377705116800).is_empty()); // 0000-01-01 UTC
     }
 
     #[test]

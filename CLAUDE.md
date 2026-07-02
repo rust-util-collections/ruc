@@ -11,6 +11,13 @@ RUC (Rust Util Collections) is a comprehensive utility library for Rust providin
 - **Algorithms** — AES-256-GCM, ED25519, Keccak-256, SHA-256, random generation
 - **Encoding/Decoding** — hex, base64, zlib, zstd, JSON, MessagePack, transcode
 
+## Design Philosophy
+
+ruc is a **lightweight, easy-to-use, practical toolkit** — not a showcase of
+maximal rigor. Keep APIs simple, docs plain, and solutions pragmatic. Never
+make common call sites more verbose; prefer additive convenience over
+mandatory ceremony. Reviews must not push toward over-formalization.
+
 ## Build & Test
 
 ```bash

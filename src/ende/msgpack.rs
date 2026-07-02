@@ -46,4 +46,11 @@ mod test {
         let decoded: String = decode(&encoded).unwrap();
         assert_eq!(decoded, "test string");
     }
+
+    #[test]
+    fn decode_invalid() {
+        // 0xc1 is never a valid msgpack byte
+        assert!(decode::<Sample>(&[0xc1]).is_err());
+        assert!(decode::<Sample>(b"").is_err());
+    }
 }

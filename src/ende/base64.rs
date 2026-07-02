@@ -34,4 +34,9 @@ mod test {
         let decoded = decode(&encoded).unwrap();
         assert!(decoded.is_empty());
     }
+
+    #[test]
+    fn decode_invalid() {
+        assert!(decode("@@ not base64 @@").is_err());
+    }
 }

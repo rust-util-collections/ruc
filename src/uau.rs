@@ -18,28 +18,20 @@
 //!
 
 use crate::*;
-use nix::{
-    sys::{
-        socket::{
-            AddressFamily, MsgFlags, SockFlag, SockType, UnixAddr, bind,
-            recvfrom, sendto, setsockopt, socket, sockopt,
-        },
-        time::{TimeVal, TimeValLike},
+use nix::sys::{
+    socket::{
+        AddressFamily, MsgFlags, SockFlag, SockType, UnixAddr, bind, recvfrom,
+        sendto, setsockopt, socket, sockopt,
     },
-    unistd::close,
+    time::{TimeVal, TimeValLike},
 };
 use std::os::{fd::OwnedFd, unix::io::AsRawFd};
 
 /// Wrap raw data
 pub struct UauSock {
+    // `OwnedFd` closes the fd automatically on drop
     fd: OwnedFd,
     sa: UnixAddr,
-}
-
-impl Drop for UauSock {
-    fn drop(&mut self) {
-        info_omit!(close(self.fd.as_raw_fd()));
-    }
 }
 
 impl UauSock {
@@ -95,107 +87,38 @@ impl UauSock {
             .map(|_| ())
     }
 
-    /// Receive msg with a const-generic sized buffer, returning data and peer address
+    /// Receive msg with a const-generic sized buffer, returning data and peer address.
+    ///
+    /// Returns an error if the incoming datagram is larger than `N` bytes
+    /// (oversized datagrams are never silently truncated) — choose a
+    /// larger `N` in that case.
     #[inline(always)]
     pub fn recv_buf<const N: usize>(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        let mut buf = [0u8; N];
-        self.recv(&mut buf)
-            .c(d!())
-            .map(|(n, peer)| (buf[..n].to_vec(), peer))
+        // one extra probe byte detects datagrams larger than `N`
+        let mut buf = vec![0u8; N + 1];
+        let (n, peer) = self.recv(&mut buf).c(d!())?;
+        ensure!(
+            n <= N,
+            "datagram larger than the {N}-byte buffer, choose a larger `N`"
+        );
+        buf.truncate(n);
+        Ok((buf, peer))
     }
 
-    /// Receive msg with a const-generic sized buffer, discarding peer address
+    /// Receive msg with a const-generic sized buffer, discarding peer address.
+    ///
+    /// Returns an error if the incoming datagram is larger than `N` bytes,
+    /// see [`recv_buf`](Self::recv_buf).
     #[inline(always)]
     pub fn recvonly_buf<const N: usize>(&self) -> Result<Vec<u8>> {
         self.recv_buf::<N>().map(|(b, _)| b)
     }
 
-    /// Receive msg with a 64-bytes buffer
-    #[deprecated(since = "10.0.0", note = "use `recv_buf::<64>()` instead")]
-    #[inline(always)]
-    pub fn recv_64(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        self.recv_buf::<64>()
-    }
-
-    /// Receive msg with a 128-bytes buffer
-    #[deprecated(since = "10.0.0", note = "use `recv_buf::<128>()` instead")]
-    #[inline(always)]
-    pub fn recv_128(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        self.recv_buf::<128>()
-    }
-
-    /// Receive msg with a 256-bytes buffer
-    #[deprecated(since = "10.0.0", note = "use `recv_buf::<256>()` instead")]
-    #[inline(always)]
-    pub fn recv_256(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        self.recv_buf::<256>()
-    }
-
-    /// Receive msg with a 512-bytes buffer
-    #[deprecated(since = "10.0.0", note = "use `recv_buf::<512>()` instead")]
-    #[inline(always)]
-    pub fn recv_512(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        self.recv_buf::<512>()
-    }
-
-    /// Receive msg with a 1024-bytes buffer
-    #[deprecated(since = "10.0.0", note = "use `recv_buf::<1024>()` instead")]
-    #[inline(always)]
-    pub fn recv_1024(&self) -> Result<(Vec<u8>, UnixAddr)> {
-        self.recv_buf::<1024>()
-    }
-
-    /// Receive msg with a 64-bytes buffer
-    #[deprecated(
-        since = "10.0.0",
-        note = "use `recvonly_buf::<64>()` instead"
-    )]
-    #[inline(always)]
-    pub fn recvonly_64(&self) -> Result<Vec<u8>> {
-        self.recvonly_buf::<64>()
-    }
-
-    /// Receive msg with a 128-bytes buffer
-    #[deprecated(
-        since = "10.0.0",
-        note = "use `recvonly_buf::<128>()` instead"
-    )]
-    #[inline(always)]
-    pub fn recvonly_128(&self) -> Result<Vec<u8>> {
-        self.recvonly_buf::<128>()
-    }
-
-    /// Receive msg with a 256-bytes buffer
-    #[deprecated(
-        since = "10.0.0",
-        note = "use `recvonly_buf::<256>()` instead"
-    )]
-    #[inline(always)]
-    pub fn recvonly_256(&self) -> Result<Vec<u8>> {
-        self.recvonly_buf::<256>()
-    }
-
-    /// Receive msg with a 512-bytes buffer
-    #[deprecated(
-        since = "10.0.0",
-        note = "use `recvonly_buf::<512>()` instead"
-    )]
-    #[inline(always)]
-    pub fn recvonly_512(&self) -> Result<Vec<u8>> {
-        self.recvonly_buf::<512>()
-    }
-
-    /// Receive msg with a 1024-bytes buffer
-    #[deprecated(
-        since = "10.0.0",
-        note = "use `recvonly_buf::<1024>()` instead"
-    )]
-    #[inline(always)]
-    pub fn recvonly_1024(&self) -> Result<Vec<u8>> {
-        self.recvonly_buf::<1024>()
-    }
-
-    /// Receive msg with a given buffer
+    /// Receive msg with a given buffer.
+    ///
+    /// NOTE: a datagram larger than the buffer is silently truncated
+    /// to the buffer size; use [`recv_buf`](Self::recv_buf) for
+    /// truncation detection.
     #[inline(always)]
     pub fn recv(&self, buf: &mut [u8]) -> Result<(usize, UnixAddr)> {
         match recvfrom::<UnixAddr>(self.fd.as_raw_fd(), buf) {
@@ -216,40 +139,32 @@ mod test {
     use super::*;
 
     #[test]
-    #[allow(deprecated)]
     fn t_send_recv() {
         let sender = pnk!(UauSock::create(None));
         let receiver = pnk!(UauSock::create(None));
 
-        pnk!(sender.send(&987654321_u32.to_ne_bytes()[..], receiver.addr()));
-        assert_eq!(
-            &987654321_u32.to_ne_bytes()[..],
-            &pnk!(receiver.recvonly_64())
-        );
+        for _ in 0..4 {
+            pnk!(
+                sender.send(&987654321_u32.to_ne_bytes()[..], receiver.addr())
+            );
+            assert_eq!(
+                &987654321_u32.to_ne_bytes()[..],
+                &pnk!(receiver.recvonly_buf::<64>())
+            );
+        }
+    }
 
-        pnk!(sender.send(&987654321_u32.to_ne_bytes()[..], receiver.addr()));
-        assert_eq!(
-            &987654321_u32.to_ne_bytes()[..],
-            &pnk!(receiver.recvonly_128())
-        );
+    #[test]
+    fn t_recv_buf_rejects_oversized_datagram() {
+        let sender = pnk!(UauSock::create(None));
+        let receiver = pnk!(UauSock::create(None));
 
-        pnk!(sender.send(&987654321_u32.to_ne_bytes()[..], receiver.addr()));
-        assert_eq!(
-            &987654321_u32.to_ne_bytes()[..],
-            &pnk!(receiver.recvonly_256())
-        );
+        pnk!(sender.send(&[0u8; 8][..], receiver.addr()));
+        assert!(receiver.recvonly_buf::<4>().is_err());
 
-        pnk!(sender.send(&987654321_u32.to_ne_bytes()[..], receiver.addr()));
-        assert_eq!(
-            &987654321_u32.to_ne_bytes()[..],
-            &pnk!(receiver.recvonly_512())
-        );
-
-        pnk!(sender.send(&987654321_u32.to_ne_bytes()[..], receiver.addr()));
-        assert_eq!(
-            &987654321_u32.to_ne_bytes()[..],
-            &pnk!(receiver.recvonly_1024())
-        );
+        // exactly-fitting datagrams still succeed
+        pnk!(sender.send(&[7u8; 4][..], receiver.addr()));
+        assert_eq!(&[7u8; 4][..], &pnk!(receiver.recvonly_buf::<4>()));
     }
 
     #[test]

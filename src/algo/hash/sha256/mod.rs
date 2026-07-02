@@ -3,6 +3,8 @@ use sha2::{Digest, Sha256};
 /// The SHA-256 hash output type.
 pub type Sha256Hash = [u8; 32];
 
+/// Hash multiple slices as one message,
+/// same as hashing their concatenation.
 pub fn hash_msg(msg: &[&[u8]]) -> Sha256Hash {
     let mut hasher = Sha256::new();
 
@@ -12,6 +14,7 @@ pub fn hash_msg(msg: &[&[u8]]) -> Sha256Hash {
     *hasher.finalize().as_ref()
 }
 
+/// SHA-256 hash of the input.
 #[inline(always)]
 pub fn hash(i: &[u8]) -> Sha256Hash {
     hash_msg(&[i])

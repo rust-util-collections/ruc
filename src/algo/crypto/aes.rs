@@ -101,5 +101,25 @@ mod test {
     fn t_aes_gcm_short_input() {
         let password = "test";
         assert!(decrypt(password, &[0u8; 5]).is_err());
+        assert!(decrypt(password, &[0u8; 11]).is_err());
+        // 12 bytes = nonce only, no ciphertext/tag => must error
+        assert!(decrypt(password, &[0u8; 12]).is_err());
+    }
+
+    #[test]
+    fn t_aes_gcm_empty_plaintext() {
+        let password = "test";
+        let enc = encrypt(password, b"").unwrap();
+        assert_eq!(decrypt(password, &enc).unwrap(), b"");
+    }
+
+    #[test]
+    fn t_aes_gcm_wrong_key_or_corrupted() {
+        let enc = encrypt("right password", b"data").unwrap();
+        assert!(decrypt("wrong password", &enc).is_err());
+
+        let mut corrupted = enc.clone();
+        *corrupted.last_mut().unwrap() ^= 1;
+        assert!(decrypt("right password", &corrupted).is_err());
     }
 }

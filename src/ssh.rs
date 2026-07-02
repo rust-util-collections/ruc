@@ -7,12 +7,13 @@
 //!
 
 use crate::*;
-use ssh2::{FileStat, OpenFlags, OpenType, Session};
+use ssh2::{Channel, FileStat, OpenFlags, OpenType, Session};
 use std::{
-    env, fs,
+    env, fs, io,
     io::{Read, Write},
-    net::TcpStream,
+    net::{TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
+    time::{Duration, Instant},
 };
 
 type HostAddr = String;
@@ -22,6 +23,85 @@ type User = String;
 type UserRef<'a> = &'a str;
 
 type Port = u16;
+
+// Clamped `RUC_SSH_TIMEOUT` in seconds: default 20, upper bound 300.
+#[inline(always)]
+fn ssh_timeout_secs() -> u32 {
+    env::var("RUC_SSH_TIMEOUT")
+        .ok()
+        .and_then(|t| info!(t.parse::<u32>(), t).ok())
+        .unwrap_or(20)
+        .min(300)
+}
+
+// Drain stdout and stderr concurrently (non-blocking interleaved reads)
+// so a remote process can never stall on a full SSH channel window,
+// regardless of how much it writes to either stream.
+//
+// The timeout works as an IDLE timeout: it only fires after a full
+// `RUC_SSH_TIMEOUT` window with no incoming data, so long-running
+// commands that keep streaming output are never cut off.
+//
+// The session is switched back to blocking mode before returning.
+fn drain_channel(
+    sess: &Session,
+    channel: &mut Channel,
+) -> Result<(Vec<u8>, Vec<u8>)> {
+    fn drain_stream(
+        r: &mut impl Read,
+        dst: &mut Vec<u8>,
+        buf: &mut [u8],
+    ) -> Result<bool> {
+        let mut progressed = false;
+        loop {
+            match r.read(buf) {
+                Ok(0) => return Ok(progressed), // EOF (for now)
+                Ok(n) => {
+                    dst.extend_from_slice(&buf[..n]);
+                    progressed = true;
+                }
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    return Ok(progressed);
+                }
+                Err(e) => return Err(eg!(e)),
+            }
+        }
+    }
+
+    let idle_timeout = Duration::from_secs(ssh_timeout_secs() as u64);
+    let mut deadline = Instant::now() + idle_timeout;
+    let mut stdout = vec![];
+    let mut stderr = vec![];
+    let mut buf = [0u8; 16 * 1024];
+
+    sess.set_blocking(false);
+    let ret = loop {
+        let out_progress = match drain_stream(channel, &mut stdout, &mut buf) {
+            Ok(p) => p,
+            Err(e) => break Err(e),
+        };
+        let err_progress =
+            match drain_stream(&mut channel.stderr(), &mut stderr, &mut buf) {
+                Ok(p) => p,
+                Err(e) => break Err(e),
+            };
+
+        if out_progress || err_progress {
+            deadline = Instant::now() + idle_timeout;
+        } else {
+            if channel.eof() {
+                break Ok((stdout, stderr));
+            }
+            if deadline < Instant::now() {
+                break Err(eg!("channel-drain timeout(no data incoming)"));
+            }
+            sleep_ms!(1);
+        }
+    };
+    sess.set_blocking(true);
+
+    ret.c(d!())
+}
 
 /// Config an instance ref.
 #[derive(Debug)]
@@ -48,41 +128,55 @@ impl RemoteHost<'_> {
     }
 
     fn gen_session(&self) -> Result<Session> {
+        let timeout = ssh_timeout_secs();
+
         let mut sess = Session::new().c(d!())?;
         let endpoint = format!("{}:{}", &self.addr, self.port);
-        let tcp = TcpStream::connect(&endpoint).c(d!(&endpoint))?;
-        sess.set_tcp_stream(tcp);
+        // try every resolved address (e.g. both v6 and v4 of a hostname)
+        let mut tcp = Err(eg!("no address resolved from `{}`", &endpoint));
+        for addr in endpoint.to_socket_addrs().c(d!(&endpoint))? {
+            match TcpStream::connect_timeout(
+                &addr,
+                Duration::from_secs(timeout as u64),
+            ) {
+                Ok(s) => {
+                    tcp = Ok(s);
+                    break;
+                }
+                Err(e) => tcp = Err(eg!("{}: {}", addr, e)),
+            }
+        }
+        sess.set_tcp_stream(tcp.c(d!(&endpoint))?);
+
+        // bound handshake/auth blocking time BEFORE performing them
+        sess.set_timeout(timeout * 1000);
+        sess.set_blocking(true);
+
         sess.handshake().c(d!()).and_then(|_| {
             let p = PathBuf::from(self.local_sk);
             sess.userauth_pubkey_file(self.user, None, p.as_path(), None)
                 .c(d!())
         })?;
 
-        let timeout = env::var("RUC_SSH_TIMEOUT")
-            .ok()
-            .and_then(|t| info!(t.parse::<u32>(), t).ok())
-            .unwrap_or(20);
-        sess.set_timeout(timeout.min(300) * 1000);
-        sess.set_blocking(true);
-
         Ok(sess)
     }
 
-    /// Execute a cmd on a remote host and get its outputs.
+    /// Execute a cmd on a remote host and get its stdout;
+    /// stderr is embedded in the error on non-zero exit.
+    ///
+    /// The `cmd` string is passed directly to the remote shell.
+    /// Do not pass unsanitized user input.
     pub fn exec_cmd(&self, cmd: &str) -> Result<Vec<u8>> {
-        let mut stdout = vec![];
-        let mut stderr = String::new();
-
         let sess = self.gen_session().c(d!())?;
         let mut channel = sess.channel_session().c(d!())?;
         channel.exec(cmd).c(d!())?;
         channel.send_eof().c(d!())?;
-        channel.read_to_end(&mut stdout).c(d!())?;
-        channel.stderr().read_to_string(&mut stderr).c(d!())?;
+        let (stdout, stderr) = drain_channel(&sess, &mut channel).c(d!())?;
         channel.wait_eof().c(d!())?;
         channel.close().c(d!())?;
         channel.wait_close().c(d!())?;
 
+        let stderr = String::from_utf8_lossy(&stderr);
         match channel.exit_status() {
             Ok(code) => {
                 if 0 == code {
@@ -107,19 +201,20 @@ impl RemoteHost<'_> {
     }
 
     /// Execute a cmd on a remote host and get its exit code.
+    ///
+    /// The `cmd` string is passed directly to the remote shell.
+    /// Do not pass unsanitized user input.
     pub fn exec_exit_code(&self, cmd: &str) -> Result<i32> {
         let sess = self.gen_session().c(d!())?;
-        let channel =
-            sess.channel_session().c(d!()).and_then(|mut channel| {
-                channel
-                    .exec(cmd)
-                    .c(d!())
-                    .and_then(|_| channel.send_eof().c(d!()))
-                    .and_then(|_| channel.wait_eof().c(d!()))
-                    .and_then(|_| channel.close().c(d!()))
-                    .and_then(|_| channel.wait_close().c(d!()))
-                    .map(|_| channel)
-            })?;
+        let mut channel = sess.channel_session().c(d!())?;
+        channel.exec(cmd).c(d!())?;
+        channel.send_eof().c(d!())?;
+        // drain both streams so the remote process is never
+        // blocked on a full channel window
+        drain_channel(&sess, &mut channel).c(d!())?;
+        channel.wait_eof().c(d!())?;
+        channel.close().c(d!())?;
+        channel.wait_close().c(d!())?;
 
         channel.exit_status().c(d!(self.id()))
     }
@@ -142,28 +237,24 @@ impl RemoteHost<'_> {
     }
 
     /// Fill the target file on the remote host with the local contents
+    /// (create it if absent, truncate it if present), via SFTP.
     pub fn replace_file<P: AsRef<Path>>(
         &self,
         remote_path: P,
         contents: &[u8],
     ) -> Result<()> {
-        let mut remote_file = self.gen_session().c(d!()).and_then(|sess| {
-            sess.scp_send(
+        let sess = self.gen_session().c(d!(self.id()))?;
+        let sftp = sess.sftp().c(d!())?;
+        let mut remote_file = sftp
+            .open_mode(
                 remote_path.as_ref(),
+                OpenFlags::CREATE | OpenFlags::WRITE | OpenFlags::TRUNCATE,
                 0o644,
-                contents.len() as u64,
-                None,
+                OpenType::File,
             )
-            .c(d!(self.id()))
-        })?;
-        remote_file
-            .write_all(contents)
-            .c(d!())
-            .and_then(|_| remote_file.send_eof().c(d!()))
-            .and_then(|_| remote_file.wait_eof().c(d!()))
-            .and_then(|_| remote_file.close().c(d!()))
-            .and_then(|_| remote_file.wait_close().c(d!()))
-            .c(d!(self.id()))
+            .c(d!(self.id()))?;
+        remote_file.write_all(contents).c(d!(self.id()))?;
+        remote_file.fsync().c(d!())
     }
 
     /// Write(append) local contents to the target file on the remote host

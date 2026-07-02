@@ -1,6 +1,7 @@
 use crate::ende::hex;
 use rand::RngExt;
 
+/// Generate 32 random bytes, hex-encoded (64 chars).
 #[inline(always)]
 pub fn rand_hex() -> String {
     let mut data = [0u8; 32];
@@ -8,30 +9,18 @@ pub fn rand_hex() -> String {
     hex::encode(data)
 }
 
+/// Generate `n` random bytes, hex-encoded (`2 * n` chars).
 #[inline(always)]
 pub fn rand_hex_n(n: usize) -> String {
     hex::encode(rand_data(n))
 }
 
+/// Generate `len` random bytes.
 #[inline(always)]
 pub fn rand_data(len: usize) -> Vec<u8> {
     let mut data = vec![0u8; len];
     rand::rng().fill(&mut data[..]);
     data
-}
-
-/// Deprecated: use `rand_hex` instead
-#[deprecated(since = "10.0.0", note = "renamed to `rand_hex`")]
-#[inline(always)]
-pub fn rand_jwt() -> String {
-    rand_hex()
-}
-
-/// Deprecated: use `rand_hex_n` instead
-#[deprecated(since = "10.0.0", note = "renamed to `rand_hex_n`")]
-#[inline(always)]
-pub fn rand_jwt_n(n: usize) -> String {
-    rand_hex_n(n)
 }
 
 #[cfg(test)]

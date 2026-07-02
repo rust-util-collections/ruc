@@ -45,12 +45,14 @@ Links to static documentations:
 
 #### ENV VARs
 
-- `$RUC_SSH_TIMEOUT`: ssh process timeout
+- `$RUC_SSH_TIMEOUT`: ssh process timeout, in seconds
   - Default to 20s
   - The max value is 300s(5 minutes)
-- `$RUC_HTTP_TIMEOUT`: http process timeout
+- `$RUC_HTTP_TIMEOUT`: http process timeout, in seconds
   - Default to 3s
   - The max value is 255s(`u8::MAX`)
+  - Unparsable or out-of-range values fall back to the default(3s)
+  - Read once at the first request, later changes have no effect
 
 ### Gratitude
 
