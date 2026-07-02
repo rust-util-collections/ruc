@@ -143,7 +143,7 @@ static LOCAL_OFFSET: std::sync::LazyLock<time::UtcOffset> =
 static DATETIME_FORMAT: std::sync::LazyLock<
     Vec<time::format_description::FormatItem<'static>>,
 > = std::sync::LazyLock::new(|| {
-    time::format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]").unwrap()
+    time::format_description::parse_borrowed::<2>("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]").unwrap()
 });
 
 /// Generate a formatted DateTime string
