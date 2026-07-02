@@ -16,10 +16,14 @@ RUC (Rust Util Collections) is a comprehensive utility library for Rust providin
 ```bash
 cargo build                    # default features (ansi only)
 cargo build --all-features     # everything
-cargo test --all-features      # full test suite
-cargo clippy --all-features    # lint
+make test                      # CI-equivalent: 3 passes, --release -- --test-threads=1
+make lint                      # cargo clippy --features="full" (+ --tests)
+cargo fmt --check              # rustfmt.toml: max_width = 79
 cargo doc --all-features --open  # docs
 ```
+
+CI runs `make build` + `make test` — the `Makefile` is the source of truth.
+Tests MUST be single-threaded (`--test-threads=1`): they mutate global env vars (`src/common.rs`).
 
 ## Project Layout
 
@@ -63,6 +67,8 @@ algo → algo_crypto (algo_ed25519, algo_aes), algo_rand, algo_hash (algo_keccak
 ende → ende_hex, ende_base64, ende_compress, ende_zstd, ende_json, ende_msgpack, ende_transcode
 ```
 
+Output-format features (outside `full`, gate no modules): `ansi` (default, colored errors), `compact` (single-line errors). `compact` is only tested via `--features="full,compact"`.
+
 ## Custom AI Commands
 
 - `/ruc-review` — API design & code quality review (supports: N commits, `all`, file paths)
@@ -71,7 +77,9 @@ ende → ende_hex, ende_base64, ende_compress, ende_zstd, ende_json, ende_msgpac
 
 Supporting documentation in `.claude/docs/`:
 - `api-design-rules.md` — naming, error handling, feature flags, generics, macros, deprecation
-- `module-patterns.md` — module responsibilities, feature mapping, invariants, security notes
+- `module-patterns.md` — module responsibilities, feature mapping, invariants (INV-*), CI ground truth, security notes
+
+Shared tool permissions live in `.claude/settings.json` (`cargo publish`, `git push --force`, destructive cleans are denied — releases are human actions).
 
 ## Conventions
 

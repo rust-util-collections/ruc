@@ -1,84 +1,92 @@
+---
+description: Evidence-based code review for ruc — API design, feature flags, security, error-chain conventions
+argument-hint: [N commits | all | <file paths> | <hash>[..<hash>]]
+---
+
 # /ruc-review — RUC Code Review
 
 You are a code reviewer for the **ruc** utility library. Perform a thorough, evidence-based review.
 
 ## Setup
 
-1. Read `.claude/docs/api-design-rules.md` — the project's API design conventions
-2. Read `.claude/docs/module-patterns.md` — module structure, invariants, anti-patterns
-3. Read `CLAUDE.md` — project overview and conventions
+Read these first — findings must cite rules from them:
+
+1. `.claude/docs/api-design-rules.md` — naming, error handling, feature flags, generics, macros, deprecation
+2. `.claude/docs/module-patterns.md` — module map, invariants (INV-*), security locations, anti-patterns
+3. `CLAUDE.md` — project overview and conventions
 
 ## Input
 
-The user provides a scope (default: latest commit):
-- **N** (number) — review the last N commits
-- **all** — full codebase audit
-- **file paths** — review specific files
-- **hash or range** — `abc123` or `abc123..def456`
+Parse the scope from `$ARGUMENTS` (default: `1`):
 
-Parse the scope from: $ARGUMENTS (default: `1`)
+- **N** (number) — review the last N commits: `git diff HEAD~N..HEAD`
+- **all** — full codebase audit: read every `.rs` file under `src/`
+- **file paths** — review those files
+- **hash or range** — `git diff abc123` / `git diff abc123..def456`
 
 ## Execution
 
 ### Task 1: Scope & Context
 
-Determine what changed:
-- If commit-based: `git diff HEAD~N..HEAD` (or range)
-- If `all`: read every `.rs` file
-- If file paths: read those files
+Determine what changed and classify each change by subsystem: `err`, `common`, `cmd`, `ssh`, `uau`, `http`, `algo`, `ende`.
 
-Identify which modules are affected. Classify changes by subsystem: err, common, cmd, ssh, uau, http, algo, ende.
+**Do not review from the diff alone.** For every changed function, open the surrounding file to understand context — callers, related helpers, and the module's existing patterns. A diff that looks fine in isolation may violate module invariants.
 
 ### Task 2: API Design Review
 
 For each public item (function, macro, struct, trait, type alias) in scope:
 
-- [ ] **Naming**: follows conventions in `api-design-rules.md` §1?
-- [ ] **Error handling**: uses `.c(d!())` pattern? No bare `.unwrap()` on `ruc::Result`? Uses `ensure!()` for preconditions?
-- [ ] **Generics**: appropriate use of `AsRef`, `impl Trait`, lifetime constraints?
-- [ ] **Symmetry**: encode/decode, compress/uncompress, encrypt/decrypt pairs complete?
-- [ ] **Documentation**: public items have doc comments? Examples where helpful?
+- [ ] **Naming**: follows `api-design-rules.md` §1 (encode/decode, compress/uncompress, encrypt/decrypt, `rand_*`/`rand_*_n`, `hash`/`hash_msg` pairs)?
+- [ ] **Error handling**: uses `.c(d!())` when propagating? No bare `.unwrap()`/`.expect()` on `ruc::Result`? Uses `ensure!()` for preconditions, `eg!()` only for new error origins?
+- [ ] **Generics**: `impl AsRef<[u8]>`/`AsRef<Path>` for public inputs? HRTB for Deserialize? No gratuitous named lifetimes?
+- [ ] **Symmetry**: every encode has a decode, every encrypt a decrypt, and they round-trip (INV-ENDE)?
+- [ ] **Documentation**: public items have doc comments? (`#![deny(missing_docs)]` except feature-gated modules)
 
-### Task 3: Feature Flag Correctness
+### Task 3: Feature Flag Correctness (INV-FEAT)
 
-- [ ] New modules have `#[cfg(feature = "X")]` guards?
-- [ ] Feature declared in Cargo.toml with correct dependencies?
-- [ ] Feature added to its parent group and to `full`?
-- [ ] Module compiles independently with only its feature enabled?
-- [ ] No cross-feature references without declared dependency?
+- [ ] New modules gated with `#[cfg(feature = "X")]` on the `pub mod` declaration?
+- [ ] Feature declared in `Cargo.toml` with its optional deps, added to its parent group AND to `full`?
+- [ ] Compiles with `cargo check --no-default-features --features X` alone?
+- [ ] No cross-feature reference without a declared feature dependency?
+- [ ] `ansi`/`compact` interactions considered if touching `src/err/mod.rs` formatting code?
 
 ### Task 4: Security Audit
 
-Check against `module-patterns.md` security-critical locations:
-- [ ] AES: random nonce per encryption? Never `Nonce::default()`?
-- [ ] ED25519: key length validated? RNG properly seeded?
-- [ ] cmd: shell injection considered? (document if caller's responsibility)
-- [ ] No secrets in error messages or logs?
-- [ ] Crypto operations use constant-time comparison where needed?
+Check against `module-patterns.md` §Security-Critical Code Locations:
+
+- [ ] AES: fresh random 12-byte nonce per encryption, prepended to ciphertext? Never fixed/zero nonce (INV-AES)?
+- [ ] ED25519: key/signature length validated on parse? OS-seeded RNG (INV-ED25519)?
+- [ ] cmd/ssh: shell-injection surface documented as caller's responsibility where applicable?
+- [ ] No secrets (keys, passwords, tokens) in error messages, logs, or `Debug` output?
+- [ ] Timeouts clamped with `.min(upper)` — not `.max()` (INV-SSH; a past real bug)?
 
 ### Task 5: Implementation Quality
 
-- [ ] No code duplication (functions doing same thing in different modules)?
-- [ ] HTTP client uses `HTTP_CLI` singleton, not per-request creation?
-- [ ] `LazyLock` for expensive one-time initialization?
-- [ ] Deprecated items delegate to replacements (no logic duplication)?
-- [ ] Tests cover happy path and error cases?
+- [ ] No duplicated logic across modules; deprecated items delegate to replacements?
+- [ ] HTTP uses the `HTTP_CLI` `LazyLock` singleton — never a per-request client (INV-HTTP)?
+- [ ] `LazyLock` for expensive one-time init?
+- [ ] Tests cover happy path AND error path? New global-state tests safe under `--test-threads=1`?
 - [ ] No anti-patterns from `module-patterns.md` §Anti-Patterns?
 
-### Task 6: Code Style
+### Task 6: Style & Doc Alignment
 
-- [ ] `#![deny(warnings)]` — no `#[allow(...)]` suppressions added?
-- [ ] Imports grouped at file top (std → external → crate)?
-- [ ] Trailing commas in macro invocations?
-- [ ] No unnecessary `clone()` or allocation?
-- [ ] **Doc-code alignment** — If the change adds, removes, or renames a public type, module, or subsystem path, verify docs still match. Specifically check:
-  - `CLAUDE.md` architecture table and conventions
+- [ ] No new `#[allow(...)]` suppressions (crate uses `#![deny(warnings)]`)?
+- [ ] Imports grouped (std → external → crate)? Trailing commas in macros? No needless `clone()`?
+- [ ] **Doc-code alignment** — if the change adds/removes/renames a public type, module, feature, or env var, verify these still match:
+  - `CLAUDE.md` (layout tree, feature hierarchy, conventions, env vars)
   - `.claude/docs/api-design-rules.md` and `.claude/docs/module-patterns.md`
-  - Doc comments and README
+  - `README.md`, `doc/*.md`, and doc comments
+
+## Severity Rubric
+
+| Level | Meaning | Examples |
+|-------|---------|----------|
+| 🔴 CRITICAL | Security hole, data corruption, UB, broken invariant | nonce reuse, key material in logs, decode ≠ encode⁻¹ |
+| 🟠 HIGH | Bug or API break under realistic usage | panic on valid input, feature build broken, wrong timeout clamp |
+| 🟡 MEDIUM | Convention violation, maintainability debt | missing `.c(d!())`, duplicate logic, missing error-path test |
+| 🟢 LOW/INFO | Polish | doc typos, naming nits, minor style |
 
 ## Output Format
-
-Report findings grouped by severity:
 
 ```
 ## 🔴 CRITICAL (must fix before merge)
@@ -86,6 +94,7 @@ Report findings grouped by severity:
 - **File**: path:line
 - **Issue**: what's wrong
 - **Evidence**: code snippet or reasoning
+- **Rule**: which documented rule/invariant (e.g., INV-AES, api-design-rules §2)
 - **Fix**: what to do
 
 ## 🟠 HIGH (should fix)
@@ -103,4 +112,4 @@ Report findings grouped by severity:
 - Overall assessment: PASS / PASS WITH CONCERNS / FAIL
 ```
 
-**Quality gate**: every finding must cite a specific file:line and explain *why* it's a problem with reference to a documented rule or invariant. Opinions without evidence are not findings.
+**Quality gate**: every finding must cite a specific `file:line` and reference a documented rule or invariant. Opinions without evidence are not findings. If the scope is clean, say so — do not invent findings to appear thorough.

@@ -54,17 +54,31 @@
 - Each `#[cfg(feature = "X")]` module compiles **independently** with only its declared deps
 - No module may reference another feature-gated module without declaring the dependency
 - `default = ["ansi"]` — only ANSI coloring is on by default
-- `full` aggregates all features — must include every leaf feature (directly or transitively)
+- `full` aggregates all *module* features — it deliberately excludes the output-format features `ansi`/`compact`
 
 ### INV-HTTP: Client Reuse
 - `HTTP_CLI` is a `LazyLock<Client>` singleton — one connection pool for all requests
-- Timeout is read once from `RUC_HTTP_TIMEOUT` at first access
+- Timeout is read once from `RUC_HTTP_TIMEOUT` at first access; parsed as `u8` → hard cap 255s, default 3s
 - Headers use `&str` lifetimes (not `'static`) to support runtime-built values
 
 ### INV-SSH: Timeout Bounds
 - Default: 20 seconds
 - Range: 1–300 seconds (`timeout.min(300)`)
 - Configurable via `RUC_SSH_TIMEOUT` environment variable
+
+### INV-TEST: Single-Threaded Tests
+- Tests MUST run with `--test-threads=1` (see `Makefile`)
+- Reason: tests mutate process-global state (`env::set_var` in `src/common.rs`); parallel threads race
+- New tests touching env vars or other global state must stay safe under this model
+- Never remove the flag to "fix" flakiness — fix the global-state usage instead
+
+## Build & CI Ground Truth
+
+- CI (`.github/workflows/`) runs `make build` and `make test` — the **`Makefile` is the source of truth** for what must pass
+- `make test` = three passes, all `--release -- --test-threads=1`: default features, `--no-default-features`, and `--features="full,compact"`
+- `make lint` = `cargo clippy --features="full"` (with and without `--tests`)
+- `rustfmt.toml`: `max_width = 79`
+- Toolchain: stable only (`rust_toolchain` file), edition 2024
 
 ## Security-Critical Code Locations
 

@@ -87,6 +87,12 @@ full
     └── ende_transcode (serde-transcode, ende_json, ende_msgpack)
 ```
 
+### Output-format features (NOT part of `full`)
+- `ansi` — colored/pretty error-chain output (in `default`)
+- `compact` — single-line error-chain output (`" 》"` delimiter, no indent); overrides pretty printing
+- Both only switch formatting code paths in `src/err/mod.rs`; they gate no modules and pull no deps
+- Because `full` excludes them, `compact` needs an explicit test pass: `--features="full,compact"`
+
 ### Rules
 - Each leaf feature maps to exactly one optional dependency (or a small cluster)
 - Group features aggregate leaves — **never** add direct dependencies to group features
