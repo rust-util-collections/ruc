@@ -69,17 +69,23 @@ ende → ende_hex, ende_base64, ende_compress, ende_zstd, ende_json, ende_msgpac
 
 Output-format features (outside `full`, gate no modules): `ansi` (default, colored errors), `compact` (single-line errors). `compact` is only tested via `--features="full,compact"`.
 
-## Custom AI Commands
+## Commands
 
-- `/ruc-review` — API design & code quality review (supports: N commits, `all`, file paths)
-- `/ruc-verify` — comprehensive build/test/clippy/feature-isolation verification
-- `/ruc-release` — release preparation (changelog, deprecation check, version validation)
+- `/x-review` — deep regression analysis (supports: N commits, `all`, hash, range)
+- `/x-fix` — fix audit backlog: resolve `doc/audit.md` → self-review → commit
+- `/x-commit` — self-reviewing commit: review uncommitted changes → fix → validate → bump patch version → commit
+- `/x-overhaul` — full codebase overhaul: review all → fix → commit
 
 Supporting documentation in `.claude/docs/`:
-- `api-design-rules.md` — naming, error handling, feature flags, generics, macros, deprecation
-- `module-patterns.md` — module responsibilities, feature mapping, invariants (INV-*), CI ground truth, security notes
+- `technical-patterns.md` — cataloged bug patterns (HISTORICAL entries actually happened here)
+- `review-core.md` — systematic review methodology + subsystem mapping table (single source of truth)
+- `false-positive-guide.md` — rules for filtering spurious findings
+- `patterns/` — per-subsystem review guides (err-common, exec, algo, ende)
 
-Shared tool permissions live in `.claude/settings.json` (`cargo publish`, `git push --force`, destructive cleans are denied — releases are human actions).
+Additional documentation in `doc/`:
+- `audit.md` — audit findings registry (auto-managed by /x-review and /x-fix)
+
+Shared tool permissions live in `.claude/settings.json` (`cargo publish`, `git push --force`, destructive cleans are denied — publishing is a human action).
 
 ## Conventions
 

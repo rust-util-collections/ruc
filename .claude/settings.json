@@ -1,6 +1,8 @@
 {
   "permissions": {
     "allow": [
+      "Edit(doc/audit.md)",
+      "Write(doc/audit.md)",
       "Bash(cargo build*)",
       "Bash(cargo test*)",
       "Bash(cargo check*)",
