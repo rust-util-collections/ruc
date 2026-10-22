@@ -100,7 +100,7 @@ Shared tool permissions live in `.claude/settings.json` (`cargo publish`, `git p
 - Error chaining: always use `.c(d!())`, never `.unwrap()` on `ruc::Result`
 - `#[macro_export]` macros reference crate items via `$crate::`, never `crate::`
 - Feature-gated modules use `#![allow(missing_docs)]` at module level
-- No nightly features — stable Rust only (edition 2024, rustc 1.86+)
+- No nightly features — stable Rust only (edition 2024, rustc 1.88+)
 - `SimpleMsg::file` is `&'static str` (from `file!()`) — zero-alloc error locations
 - AES encryption always uses random 12-byte nonce prepended to ciphertext
 - HTTP client is reused via `LazyLock<Client>` — do not create per-request clients

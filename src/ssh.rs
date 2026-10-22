@@ -131,7 +131,7 @@ impl RemoteHost<'_> {
         let timeout = ssh_timeout_secs();
 
         let mut sess = Session::new().c(d!())?;
-        let endpoint = format!("{}:{}", &self.addr, self.port);
+        let endpoint = format!("{}:{}", self.addr, self.port);
         // try every resolved address (e.g. both v6 and v4 of a hostname)
         let mut tcp = Err(eg!("no address resolved from `{}`", &endpoint));
         for addr in endpoint.to_socket_addrs().c(d!(&endpoint))? {
@@ -334,14 +334,13 @@ impl RemoteHostOwned {
     #[inline(always)]
     pub fn new_default(addr: HostAddr, remote_user: User) -> Result<Self> {
         let home = env::var("HOME").c(d!())?;
-        let rsa_key_path = PathBuf::from(format!("{}/.ssh/id_rsa", &home));
+        let rsa_key_path = PathBuf::from(format!("{}/.ssh/id_rsa", home));
         let ed25519_key_path = PathBuf::from(home + "/.ssh/id_ed25519");
 
-        let local_sk;
-        if ed25519_key_path.exists() {
-            local_sk = ed25519_key_path;
+        let local_sk = if ed25519_key_path.exists() {
+            ed25519_key_path
         } else if rsa_key_path.exists() {
-            local_sk = rsa_key_path;
+            rsa_key_path
         } else {
             return Err(eg!(
                 "Private key not found, neither RSA nor ED25519."

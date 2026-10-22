@@ -11,9 +11,9 @@ pub fn encrypt(password: &str, contents: &[u8]) -> Result<Vec<u8>> {
     let key_bytes = keccak::hash(password.as_bytes());
     let mut nonce_bytes = [0u8; NONCE_SIZE];
     rand::rng().fill(&mut nonce_bytes);
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    let nonce = Nonce::from(nonce_bytes);
     let ciphertext = Aes256Gcm::new((&key_bytes).into())
-        .encrypt(nonce, contents)
+        .encrypt(&nonce, contents)
         .map_err(|e| eg!(e))?;
     let mut result = Vec::with_capacity(NONCE_SIZE + ciphertext.len());
     result.extend_from_slice(&nonce_bytes);
@@ -32,10 +32,11 @@ pub fn decrypt(password: &str, encrypted_bytes: &[u8]) -> Result<Vec<u8>> {
         return Err(eg!("ciphertext too short"));
     }
     let (nonce_bytes, ciphertext) = encrypted_bytes.split_at(NONCE_SIZE);
-    let nonce = Nonce::from_slice(nonce_bytes);
+    let nonce = Nonce::try_from(nonce_bytes)
+        .map_err(|_| eg!("invalid nonce length"))?;
     let key_bytes = keccak::hash(password.as_bytes());
     Aes256Gcm::new((&key_bytes).into())
-        .decrypt(nonce, ciphertext)
+        .decrypt(&nonce, ciphertext)
         .map_err(|e| eg!(e))
 }
 
