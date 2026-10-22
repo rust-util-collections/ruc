@@ -1,14 +1,15 @@
 //!
 //! # cmd
 //!
-//! Local command execution based on rust standard library
+//! Local command execution based on the Rust standard library.
 //!
 
 use crate::*;
 use std::process::{Child, Command, Stdio};
 
-/// Execute an external command via `bash -c`,
-/// and return its outputs after it exits.
+/// Execute an external command via `bash -c` and return its stdout.
+///
+/// On non-zero exit, the returned error carries the command's stderr.
 ///
 /// The `cmd` string is passed directly to the shell.
 /// Do not pass unsanitized user input.
@@ -40,9 +41,11 @@ fn kill_and_reap(child: &mut Child) {
     info_omit!(child.wait());
 }
 
-/// Execute an external command via `bash -c`,
-/// and return its outputs after it exits,
-/// or return an error on timeout.
+/// Execute an external command via `bash -c` and return its stdout,
+/// or an error if it fails or exceeds the timeout.
+///
+/// A `timeout_milliseconds` of 0 disables the timeout.
+/// On non-zero exit, the returned error carries the command's stderr.
 ///
 /// The `cmd` string is passed directly to the shell.
 /// Do not pass unsanitized user input.

@@ -6,49 +6,59 @@
 
 # ruc
 
-Rust Util Collection, components included:
+Rust Util Collections, components included:
 
 - Chained error management
-- Local command execution based on rust standard library
+- Local command execution based on the Rust standard library
   - required features: `cmd`
-- Remote command execution based on the SSH protocol
+- Remote command execution and SFTP file transfer over SSH
   - required features: `ssh`
-- Interprocess Communication Based on Unix Abstract Sockets
+- Interprocess communication based on Unix abstract sockets
   - required features: `uau`
-  - only available on various Linux platforms
-  - the built-in functions only support the UDP protocol
+  - Linux only
+  - UDP only
 - Algorithm operations
   - required features: `algo`
-    - rand, hash, ecc sigature, etc.
+    - random generation, Keccak-256/SHA-256 hashing
+    - AES-256-GCM encryption, ED25519 signatures
+- HTTP client (blocking GET/POST)
+  - required features: `http`
+  - plain HTTP only — this crate enables no TLS backend
 - Encode/Decode operations
   - required features: `ende`
     - hex, base64
-    - zlib compress, zlib uncompress
-    - json, message-pack, serde transcode
-    - and so on ...
+    - zlib/zstd compression
+    - JSON, MessagePack, and JSON↔MessagePack transcoding
 - ...
 
-In addition, there is a feature named "full", using it will enable all functional features.
+In addition, the `full` feature enables all functional features above
+(the output-format features `ansi` and `compact` are separate).
 
-### Documentations
+### Documentation
 
 ```shell
 # cargo doc --all-features --open
 make doc
 ```
 
-Links to static documentations:
-- [Chained error management](doc/errmgmt.md)
-- [Local command execution](doc/cmd.md)
-- [Remote command execution](doc/ssh.md)
-- [Interprocess Communication](doc/uau.md)
+Static documentation:
+- [Chained error management](https://github.com/rust-util-collections/ruc/blob/master/doc/errmgmt.md)
+- [Local command execution](https://github.com/rust-util-collections/ruc/blob/master/doc/cmd.md)
+- [Remote command execution](https://github.com/rust-util-collections/ruc/blob/master/doc/ssh.md)
+- [Interprocess communication](https://github.com/rust-util-collections/ruc/blob/master/doc/uau.md)
 
 #### ENV VARs
 
-- `$RUC_SSH_TIMEOUT`: ssh process timeout, in seconds
+- `$RUC_LOG_LEVEL`: log verbosity, `INFO`(default) or `ERROR`
+  - any other value falls back to `INFO`
+  - `INFO` lets `info!`/`info_omit!` print; `ERROR` suppresses them
+  - read once at first use, later changes have no effect
+- `$RUC_SSH_TIMEOUT`: SSH timeout, in seconds
+  - bounds connect, handshake/authentication, and idle output draining
   - Default to 20s
-  - The max value is 300s(5 minutes)
-- `$RUC_HTTP_TIMEOUT`: http process timeout, in seconds
+  - The max value is 300s(5 minutes); larger values are clamped to 300
+  - Unparsable values fall back to the default(20s)
+- `$RUC_HTTP_TIMEOUT`: HTTP request timeout, in seconds
   - Default to 3s
   - The max value is 255s(`u8::MAX`)
   - Unparsable or out-of-range values fall back to the default(3s)

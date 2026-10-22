@@ -18,10 +18,10 @@ pub mod uau;
 #[cfg(feature = "http")]
 pub mod http;
 
-// DO NOT SET features!
+// Do not gate this module: its children are feature-gated individually.
 pub mod algo;
 
-// DO NOT SET features!
+// Do not gate this module: its children are feature-gated individually.
 pub mod ende;
 
 /////////////////////////////////////////////

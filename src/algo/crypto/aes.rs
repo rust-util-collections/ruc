@@ -7,6 +7,10 @@ use rand::RngExt;
 
 const NONCE_SIZE: usize = 12;
 
+/// Encrypt `contents` with a key derived as `Keccak256(password)`.
+///
+/// A fresh random 12-byte nonce is generated per call and prepended to
+/// the returned ciphertext (`nonce || ciphertext`).
 pub fn encrypt(password: &str, contents: &[u8]) -> Result<Vec<u8>> {
     let key_bytes = keccak::hash(password.as_bytes());
     let mut nonce_bytes = [0u8; NONCE_SIZE];
@@ -21,12 +25,15 @@ pub fn encrypt(password: &str, contents: &[u8]) -> Result<Vec<u8>> {
     Ok(result)
 }
 
+/// Encrypt and return `nonce || ciphertext` as a base64 string.
 pub fn encrypt_to_base64(password: &str, contents: &[u8]) -> Result<String> {
     encrypt(password, contents)
         .c(d!())
         .map(|en| base64::encode(&en))
 }
 
+/// Decrypt data produced by [`encrypt`], reading the 12-byte nonce
+/// from the prefix.
 pub fn decrypt(password: &str, encrypted_bytes: &[u8]) -> Result<Vec<u8>> {
     if encrypted_bytes.len() < NONCE_SIZE {
         return Err(eg!("ciphertext too short"));
@@ -40,6 +47,7 @@ pub fn decrypt(password: &str, encrypted_bytes: &[u8]) -> Result<Vec<u8>> {
         .map_err(|e| eg!(e))
 }
 
+/// Decode a base64 string and decrypt it.
 pub fn decrypt_from_base64(
     password: &str,
     encrypted_base64: &str,

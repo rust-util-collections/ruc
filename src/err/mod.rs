@@ -32,7 +32,7 @@ use core::{
 
 use std::{collections::HashSet, sync::LazyLock};
 
-/// `INFO` or `ERROR`, if mismatch, default to `INFO`
+/// Log verbosity: `INFO` or `ERROR`; any other value is treated as `INFO`.
 pub static LOG_LEVEL: LazyLock<String> = LazyLock::new(|| {
     if let Ok(l) = std::env::var("RUC_LOG_LEVEL")
         && "ERROR" == l
@@ -71,22 +71,22 @@ pub trait RucError: Display + Debug + Send {
         *self.type_ids().last().unwrap()
     }
 
-    /// check the type of the lowest error
+    /// Check whether the lowest-level error has the same type as `e`.
     fn lowest_is_type(&self, e: &dyn Any) -> bool {
         self.lowest_type_id() == e.type_id()
     }
 
-    /// check if an error exists in the error chain
+    /// Check whether any error in the chain has the same type as `e`.
     fn contains_type(&self, e: &dyn Any) -> bool {
         self.type_ids().contains(&e.type_id())
     }
 
-    /// Compare two objects
+    /// Check whether both errors have the same lowest-level message.
     fn msg_eq(&self, another: &dyn RucError) -> bool {
         self.get_lowest_msg() == another.get_lowest_msg()
     }
 
-    /// check if any node from the error_chain matches the given error
+    /// Check whether any message in the chain also appears in `another`'s chain.
     fn msg_has_overlap(&self, another: &dyn RucError) -> bool {
         let mut self_list = HashSet::new();
         self_list.insert(self.get_top_msg());

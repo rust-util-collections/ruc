@@ -4,7 +4,7 @@
 
 ## Open
 
-*(none — all findings from the 2026-07-02 full audit were resolved in v11.0.0)*
+*(none — all findings from the full audit were resolved in v11.0.0)*
 
 ---
 

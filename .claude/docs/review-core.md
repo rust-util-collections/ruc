@@ -26,7 +26,7 @@ Before analyzing any change, gather context:
    | `src/algo/crypto/aes.rs` | AES-256-GCM | `algo_aes` | `algo.md` |
    | `src/algo/crypto/ed25519/` | ED25519 sign/verify | `algo_ed25519` | `algo.md` |
    | `src/ende/` | encode/decode (hex, base64, zlib, zstd, json, msgpack, transcode) | `ende_*` | `ende.md` |
-   | `Cargo.toml` (features section) | feature graph | *(all)* | `err-common.md` §feature rules |
+   | `Cargo.toml` (features section) | feature graph | *(all)* | `technical-patterns.md` Category 4 + `err-common.md` checklist |
 3. **Load subsystem patterns** — read the pattern guide for each affected subsystem (skip unaffected ones)
 4. **Check call sites** — grep for all callers of changed functions (including doc examples and tests)
 5. **Check related tests** — identify which `#[cfg(test)]` modules cover the changed code
@@ -72,7 +72,7 @@ Check edge cases specific to the change:
 - Empty input (`&[]`, `""`) for every encode/decode/hash/crypto function
 - Input shorter than a required prefix (e.g., AES ciphertext < 12-byte nonce)
 - Timeout = 0, timeout = max (u8/u32 parse limits), env var unset / unparsable
-- Buffer exactly at capacity (uau `recv_buf::<N>` with message length == N)
+- Buffer exactly at capacity (uau `recv_buf::<N>` with message length == N must succeed; N+1 must error)
 - Non-UTF8 bytes where `String` output is produced (`from_utf8_lossy` semantics)
 - Key/signature length off by one (ED25519: 32-byte keys, 64-byte signatures)
 
@@ -125,7 +125,7 @@ New/changed public APIs must follow the house style:
 ### 4.4 Code Style Rules
 
 These are enforced project conventions — violations are findings (severity LOW):
-- **No new `#[allow(...)]`** — `#![deny(warnings)]` is the law; fix at the source (documented cfg-parity exceptions aside)
+- **No new `#[allow(...)]`** — `#![deny(warnings)]` is the law; fix at the source (documented exceptions aside)
 - **Import grouping**: the `use crate::*;` prelude comes first, then std, then external crates; merge common prefixes
 - **Macros**: `$crate::` paths (never `crate::` or unqualified sibling macros), trailing-comma support `$(,)*`
 - **rustfmt**: `max_width = 79` (run `make fmt`)

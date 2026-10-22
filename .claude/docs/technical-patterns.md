@@ -66,7 +66,7 @@ or kills it without reaping (`wait`).
 **Where**: `src/cmd.rs` `exec_timeout` polling loop.
 **Impact**: Process leak; on repeat, fd/PID exhaustion.
 **Check**: Every early-exit path either got `Output` (already reaped) or calls
-`child.kill()` before returning.
+`child.kill()` and `child.wait()` (reap) before returning.
 
 ### 2.3 Lossy UTF-8 Masking Real Output
 **Pattern**: `from_utf8_lossy` silently mangles binary output where bytes were
@@ -105,7 +105,8 @@ non-ansi builds emitted ANSI codes.
 **Where**: `src/err/mod.rs` (`ansi`/`compact` formatting fns), any cfg pair.
 **Impact**: Wrong behavior in exactly the configuration that isn't tested.
 **Check**: For every cfg pair, verify each body matches its own predicate.
-Both configurations must be compiled by CI (`full` and `full,compact` passes).
+CI compiles three configurations: default, `--no-default-features`, and
+`full,compact`.
 
 ### 4.2 Feature Leakage
 **Pattern**: Code under feature A references an item only compiled under
@@ -159,13 +160,15 @@ round-trip (or one of the pair is missing entirely).
 **Check**: Every new codec ships with a round-trip test
 (`decode(encode(x)) == x`), including the empty input.
 
-### 6.2 Silent Truncation on Fixed Buffers
-**Pattern**: Receiving into a fixed-size buffer and discarding the "message
-longer than buffer" case.
-**Where**: `src/uau.rs` `recv_buf::<N>`.
+### 6.2 Undetected Truncation on Fixed Buffers **[HISTORICAL: fixed in v11.0.0]**
+**Pattern**: Receiving into a fixed-size buffer and treating a truncated
+datagram as a complete message.
+**Where**: `src/uau.rs` — `recv_buf::<N>`/`recvonly_buf::<N>` now detect an
+oversized datagram (one probe byte) and return an error. The low-level
+`recv(buf)` still truncates silently by design and says so in its docs.
 **Impact**: Truncated datagrams treated as complete messages.
-**Check**: Buffer-size APIs document truncation semantics; callers can choose
-a bigger `N`.
+**Check**: New buffer-size APIs must detect oversize or document truncation
+explicitly.
 
 ## Category 7: Global State Bugs
 

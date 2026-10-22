@@ -146,7 +146,8 @@ static DATETIME_FORMAT: std::sync::LazyLock<
     time::format_description::parse_borrowed::<2>("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour sign:mandatory]").unwrap()
 });
 
-/// Generate a formatted DateTime string
+/// Generate a formatted DateTime string in the local timezone,
+/// e.g. `2026-10-22 09:23:56 +08`.
 ///
 /// Timestamps outside the representable datetime range are saturated
 /// to the minimum/maximum representable datetime instead of panicking.
@@ -198,7 +199,9 @@ pub fn write_file<P: AsRef<Path>>(
 
 /// Retry a fallible operation with fixed delay between attempts.
 ///
-/// Returns the first successful result, or the last error wrapped in ruc error chain.
+/// `times` is the total number of attempts (clamped to at least 1).
+/// Returns the first successful result, or the last error wrapped in
+/// the ruc error chain.
 pub fn retry<T, E, F>(times: usize, delay_ms: u64, mut f: F) -> Result<T>
 where
     F: FnMut() -> core::result::Result<T, E>,

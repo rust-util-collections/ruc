@@ -20,14 +20,14 @@ Theme: security-critical. Findings here default one severity level UP.
 - Serde representations must stay stable — they are a wire format
 
 ### INV-HASH: Digest Discipline
-- `hash(input)` single-input; `hash_msg(&[&[u8]])` multi-part — multi-part must equal hashing the concatenation ONLY if documented; otherwise domain separation is deliberate — check which before "fixing"
+- `hash(input)` hashes one slice; `hash_msg(&[&[u8]])` hashes the concatenation of all slices — this equivalence is documented and deliberate (no domain separation)
 - Output types are fixed arrays: `KeccakHash = [u8; 32]`, `Sha256Hash = [u8; 32]` — never `Vec<u8>`
 - Empty input is valid and must produce the algorithm's canonical empty digest
 
 ### INV-RAND: Random Generation
-- `rand_hex()` default size / `rand_hex_n(n)` custom; `rand_data(len)` raw bytes
-- `rand_jwt`/`rand_jwt_n` are deprecated delegators to `rand_hex*` — keep as one-line delegation (technical-patterns 8.1)
-- Randomness from OS entropy; output uniformity: hex output length semantics (chars vs bytes) must stay documented
+- `rand_hex()` returns 32 bytes hex-encoded; `rand_hex_n(n)` returns `n` bytes hex-encoded; `rand_data(len)` returns raw bytes
+- The old `rand_jwt`/`rand_jwt_n` names were removed in v11.0.0 — do not reintroduce them
+- Randomness from OS entropy; hex output length semantics (2 chars per byte) must stay documented
 
 ## Security Review Rules (mandatory for any diff here)
 

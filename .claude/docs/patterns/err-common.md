@@ -22,12 +22,12 @@ Features: always compiled; `ansi` / `compact` switch error-output formatting onl
 - All public macros are `#[macro_export]` — they live at crate root regardless of source file
 - Bodies reference crate items via `$crate::` only (technical-patterns 5.2)
 - Variadic macros accept trailing commas: `$(,)*`
-- Macros exist only for compile-time info (`file!()`, `line!()`) or literal syntax (`map!{}`); everything else is a function
+- Macros are reserved for compile-time info (`file!()`, `line!()`), literal syntax (`map!{}`), or small control-flow helpers (`ensure!`, `sleep_ms!`); larger logic belongs in functions
 
 ### INV-COMMON: Helpers
-- Collection literals: `map!`, `bmap!`, `set!`, `bset!` — plain and typed forms
+- Collection literals: `map!`/`set!` build `HashMap`/`HashSet`; `bmap!`/`bset!` build `BTreeMap`/`BTreeSet`; `map!{}`/`set!{}` are empty, while `map!(||)`/`set!(||)` yield the constructor
 - Time: `ts!()` (secs), `ts_ms!()` (millis), `datetime!()`, `gen_datetime()` — datetime format is cached; OS local timezone is used
-- `retry(times, delay_ms, f)` — verify retry count semantics (total attempts vs retries) if touched
+- `retry(times, delay_ms, f)` — `times` is the total number of attempts (clamped to at least 1), not the number of retries
 - `read_file`/`write_file`: `impl AsRef<Path>`, errors chained with `.c(d!())`
 - `env_or(key, default)`: returns default on unset — tests for it mutate real env vars (serial-test constraint, technical-patterns 7.1)
 

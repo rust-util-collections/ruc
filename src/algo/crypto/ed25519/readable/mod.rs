@@ -1,3 +1,6 @@
+//! Base64-encoded, serde-compatible ED25519 keys and signatures.
+//!
+
 use super::origin;
 use crate::{ende::base64, *};
 use ed25519_dalek::{Signer, Verifier};
@@ -13,22 +16,26 @@ fn decode_bytes<const N: usize>(b64: &str) -> Result<[u8; N]> {
         .map_err(|_| eg!("invalid length, expected {}", N))
 }
 
+/// Base64-encoded ED25519 signing key.
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct SignKey(String);
 
+/// Base64-encoded ED25519 verifying key.
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct VerifyKey(String);
 
+/// Base64-encoded ED25519 signature.
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Sig(String);
 
-// <signing key + verify key> in base64 format
+/// Generate a new random key pair.
 pub fn create_keypair() -> (SignKey, VerifyKey) {
     let (sk, vk) = origin::create_keypair();
     (sk.into(), vk.into())
 }
 
 impl SignKey {
+    /// Sign `msg` and return the base64-encoded signature.
     pub fn sign(&self, msg: &[u8]) -> Result<Sig> {
         let sk_bytes: [u8; 32] = decode_bytes(&self.0).c(d!())?;
         let sk = RawSignKey::from_bytes(&sk_bytes);
@@ -91,6 +98,7 @@ impl From<RawSignKey> for SignKey {
 }
 
 impl VerifyKey {
+    /// Verify `sig` against `msg`.
     pub fn verify(&self, sig: &Sig, msg: &[u8]) -> Result<()> {
         let vk_bytes: [u8; 32] = decode_bytes(&self.0).c(d!())?;
         let vk = RawVerifyKey::from_bytes(&vk_bytes)
@@ -159,6 +167,7 @@ impl From<RawVerifyKey> for VerifyKey {
     }
 }
 
+/// Verify a signature with a raw `VerifyingKey`.
 pub fn verify_by_raw_vk(
     vk: &RawVerifyKey,
     sig: &Sig,

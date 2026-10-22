@@ -1,9 +1,10 @@
 //!
 //! # SSH
 //!
-//! Remote command execution based on the SSH protocol.
+//! Remote command execution and file transfer over the SSH protocol.
 //!
-//! NOTE: only public key authentication is supported.
+//! NOTE: only public key authentication is supported;
+//! file transfer uses SFTP, not SCP.
 //!
 
 use crate::*;
@@ -112,7 +113,7 @@ pub struct RemoteHost<'a> {
     pub user: UserRef<'a>,
     /// The sshd listening port of the remote host.
     pub port: Port,
-    /// Path list of the ssh secret keys(rsa/ed25519 key).
+    /// Path to the SSH private key (RSA or ED25519).
     pub local_sk: &'a Path,
 }
 
@@ -277,7 +278,8 @@ impl RemoteHost<'_> {
         remote_file.fsync().c(d!())
     }
 
-    /// Send a local file to the target path on the remote host.
+    /// Upload a local file to the target path on the remote host,
+    /// creating or truncating the remote file.
     #[inline(always)]
     pub fn put_file<LP: AsRef<Path>, RP: AsRef<Path>>(
         &self,
@@ -297,7 +299,13 @@ impl RemoteHost<'_> {
         self.scp(local_path, remote_path, false).c(d!())
     }
 
-    /// Copy files between local host and the remote host.
+    /// Copy a file between the local host and the remote host via SFTP.
+    ///
+    /// `direction_is_out == true` uploads `local_path` to `remote_path`;
+    /// `false` downloads `remote_path` to `local_path`.
+    ///
+    /// The name is kept for API compatibility; the transfer does not use
+    /// the SCP protocol.
     pub fn scp<LP: AsRef<Path>, RP: AsRef<Path>>(
         &self,
         local_path: LP,
@@ -325,12 +333,13 @@ pub struct RemoteHostOwned {
     pub user: User,
     /// The sshd listening port of the remote host.
     pub port: Port,
-    /// Path list of the ssh secret keys(rsa/ed25519 key).
+    /// Path to the SSH private key (RSA or ED25519).
     pub local_sk: PathBuf,
 }
 
 impl RemoteHostOwned {
-    /// Create a new instance with default port and key path.
+    /// Create a new instance with port 22 and the first existing key
+    /// among `~/.ssh/id_ed25519` and `~/.ssh/id_rsa`.
     #[inline(always)]
     pub fn new_default(addr: HostAddr, remote_user: User) -> Result<Self> {
         let home = env::var("HOME").c(d!())?;

@@ -23,14 +23,14 @@ fn will_panic() {
 }
 ```
 
-## OutPut Sample
+## Output Sample
 
 #### Non-Color View
 
-> features = ["ansi"]
+> without the `ansi` feature (e.g. `--no-default-features`)
 
 ```
-# 2021-09-09 9:23:56 [pid: 20837] [pidns: 4026531836]
+# 2021-09-09 09:23:56 +08 [pid: 20837] [pidns: 4026531836]
 ERROR: ...
 |-- file: src/lib.rs
 |-- line: 270
@@ -63,8 +63,10 @@ Caused By: ...
 
 #### Colorful View
 
+> features = ["ansi"] (enabled by default)
+
 ```
-# 2021-09-09 9:23:57 [pid: 20909] [pidns: 4026531836]
+# 2021-09-09 09:23:57 +08 [pid: 20909] [pidns: 4026531836]
 ERROR: ...
 ├── file: src/lib.rs
 ├── line: 270
@@ -97,8 +99,8 @@ Caused By: ...
 
 #### Compact View
 
-> features = ["compact"]
+> shown with `--no-default-features --features compact`
 
 ```
-# 2022-01-12 5:56:13 [pid: 73002] [pidns: NULL] 》INFO: ... 》file: src/lib.rs 》line: 354 》column: 9 》Caused By: ... 》file: src/lib.rs 》line: 354 》column: 33
+# 2022-01-12 05:56:13 +08 [pid: 73002] [pidns: NULL] 》INFO: ... 》file: src/lib.rs 》line: 354 》column: 9 》Caused By: ... 》file: src/lib.rs 》line: 354 》column: 33
 ```

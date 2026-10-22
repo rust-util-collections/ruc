@@ -1,3 +1,7 @@
+//! Blocking HTTP client (plain HTTP only — no TLS backend is enabled).
+//!
+//! All requests share one `LazyLock` client so connections are pooled.
+//!
 #![allow(missing_docs)]
 
 use crate::*;

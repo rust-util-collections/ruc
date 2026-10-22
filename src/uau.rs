@@ -1,14 +1,14 @@
 //!
 //! # UAU
 //!
-//! Unix(Unix Domain Socket) Abstract Udp
+//! Unix abstract datagram (UDP) sockets.
 //!
 //! An abstract socket address is distinguished (from a pathname socket)
 //! by the fact that sun_path[0] is a null byte ('\0').
 //! The socket's address in this namespace is given
 //! by the additional bytes in sun_path that are covered
 //! by the specified length of the address structure.
-//! Null bytes in the name have no special  significance.
+//! Null bytes in the name have no special significance.
 //! The name has no connection with filesystem pathnames.
 //! When the address of an abstract socket is returned,
 //! the returned addrlen is greater than sizeof(sa_family_t) (i.e., greater than 2),
@@ -37,10 +37,11 @@ pub struct UauSock {
 impl UauSock {
     /// NOTE:
     ///
-    /// The Unix Socket that needs to receive messages must be bound to an explicit address;
-    /// If you send msg anonymously, you will not receive the reply msg from the peer.
+    /// A socket that needs to receive messages must be bound to an
+    /// explicit address. A sender that does not bind an address cannot
+    /// receive replies from its peer.
     ///
-    /// So the `addr` parameter should not be empty.
+    /// Therefore `addr` should not be empty.
     pub fn new(addr: &[u8], recv_timeout: Option<i64>) -> Result<Self> {
         let fd = socket(
             AddressFamily::Unix,
@@ -66,7 +67,7 @@ impl UauSock {
         Ok(UauSock { fd, sa })
     }
 
-    /// Generate a random instance
+    /// Create an instance bound to a random abstract address.
     #[inline(always)]
     pub fn create(recv_timeout: Option<i64>) -> Result<Self> {
         let addr = (ts!() as u32 ^ rand::random::<u32>()).to_ne_bytes();
@@ -128,7 +129,7 @@ impl UauSock {
         }
     }
 
-    /// Try to convert a user-given addr to SockAddr(unix sock)
+    /// Convert a user-given byte string to an abstract Unix socket address.
     pub fn addr_to_sock(addr: &[u8]) -> Result<UnixAddr> {
         UnixAddr::new_abstract(addr).c(d!())
     }

@@ -1,3 +1,6 @@
+//! Raw ED25519 keys, without any encoding or serde wrapper.
+//!
+
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::RngExt;
 

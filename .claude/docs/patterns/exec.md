@@ -7,21 +7,21 @@ Theme: talking to the outside world — processes, remote hosts, sockets, HTTP. 
 
 ### INV-CMD: Process Lifecycle
 - `exec` runs `bash -c <cmd>`; injection is the **caller's documented responsibility** (docs must say "Do not pass unsanitized user input") — see false-positive-guide FP-2
-- `exec_timeout` polls in 100ms steps; on timeout it MUST `child.kill()` before returning the error (technical-patterns 2.2)
+- `exec_timeout` polls in 100ms steps; on timeout or error it MUST `child.kill()` and `child.wait()` (reap) before returning (technical-patterns 2.2)
 - `timeout_milliseconds == 0` degrades to plain `exec`
 - stdout returned via `from_utf8_lossy` → `String` (documented lossy; FP-8); non-zero exit returns `Err(eg!(stderr))`
 
 ### INV-SSH: Remote Execution Safety
 - Public-key auth ONLY — never add password/agent auth silently
-- **Never build remote shell strings from paths/args** — the `cat <path>` injection was a real bug (technical-patterns 2.1); use SFTP (`sftp_read`, etc.) for file ops
-- Timeout: `RUC_SSH_TIMEOUT` (u32 secs), default 20, clamped `.min(300)`, applied in ms (`* 1000`) — clamp direction was a real bug (technical-patterns 3.1)
+- **Never build remote shell strings from paths/args** — the `cat <path>` injection was a real bug (technical-patterns 2.1); use the SFTP methods (`read_file`, `replace_file`, `append_file`, `put_file`, `get_file`) for file ops
+- Timeout: `RUC_SSH_TIMEOUT` (u32 secs), default 20, clamped `.min(300)`, bounds connect, handshake/auth (`* 1000` ms), and channel idle draining — clamp direction was a real bug (technical-patterns 3.1)
 - `exec_cmd` returns `Vec<u8>` (byte-exact) — do not change to lossy `String`
 - Session/TcpStream lifecycle: handshake failures must not leak connections
 
 ### INV-UAU: Abstract Socket Semantics (Linux-only)
-- Abstract namespace = leading NUL in `sun_path`; no filesystem cleanup needed, but fd IS closed in `Drop` (`info_omit!(close(fd))`)
+- Abstract namespace = leading NUL in `sun_path`; no filesystem cleanup needed, and the fd is closed automatically by `OwnedFd` on drop
 - Receivers must bind an explicit address; anonymous senders get no replies (documented)
-- `recv_buf::<N>`: message longer than N is truncated — semantics must stay documented (technical-patterns 6.2); `recv_64`..`recv_1024` are fixed-N conveniences
+- `recv_buf::<N>`/`recvonly_buf::<N>`: a datagram larger than `N` returns an error (v11.0.0; previously silently truncated) — the low-level `recv(buf)` still truncates silently by design (technical-patterns 6.2)
 - Module is `#[cfg(target_os = "linux")]` gated — never let it leak into macOS/BSD builds
 
 ### INV-HTTP: Client Reuse & Timeout
@@ -37,6 +37,6 @@ Theme: talking to the outside world — processes, remote hosts, sockets, HTTP. 
 - [ ] Clamps read correctly: upper = `.min`, lower = `.max`?
 - [ ] New env knobs: parsed type documents its natural cap; fallback documented; added to `CLAUDE.md`?
 - [ ] fd/session/socket released on all paths (Drop or explicit)?
-- [ ] uau code stays inside the Linux cfg gate; buffer truncation documented?
+- [ ] uau code stays inside the Linux cfg gate; oversized-datagram behavior documented (`recv_buf` errors, `recv` truncates)?
 - [ ] No per-call client/session construction where a singleton or reuse exists?
 - [ ] Timeout tests use generous margins (CI is slow) and stay serial-safe?
