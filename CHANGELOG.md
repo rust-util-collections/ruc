@@ -19,6 +19,7 @@
 - Add: `.c_with(|| d!(...))` — lazy error context, zero cost on the `Ok` path
 - Add: `zlib_uncompress_bounded`/`zstd_uncompress_bounded` for untrusted input
 - Chore: upgrade all dependencies to their latest stable releases; MSRV is now rustc 1.88+
+- Chore: raise MSRV to rustc 1.95+
 - Docs: full documentation pass — fix stale, unclear, and contradictory descriptions across README, `doc/`, and rustdoc comments
 
 #### v7.x
