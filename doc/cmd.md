@@ -6,6 +6,7 @@ Synchronous local command execution via `bash -c`,
 - `exec_timeout` additionally bounds the run time (0 disables the timeout)
 - Both output streams are drained during execution; output collection shares
   the timeout, including pipes inherited by background processes
-- On timeout/error, the shell is killed and reaped; on Unix its process group
+- On timeout or I/O failure, the shell is killed and reaped; on Unix its process group
   is killed too (descendants that leave the group are outside this cleanup)
+- A completed command's non-zero exit does not terminate its background jobs
 - Output uses lossy UTF-8 conversion; do not pass unsanitized user input

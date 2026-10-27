@@ -44,8 +44,9 @@ fn kill_and_reap(job: &Job) {
 /// A `timeout_milliseconds` of 0 disables the timeout.
 /// On non-zero exit, the returned error carries the command's stderr.
 /// Both output streams are drained within the timeout, including pipes
-/// inherited by background processes. On Unix, timeout/error cleanup kills
-/// the shell's process group; elsewhere it kills the shell itself.
+/// inherited by background processes. On timeout or I/O failure, cleanup
+/// kills and reaps the shell; on Unix it first kills the process group.
+/// A completed command's non-zero exit does not trigger group termination.
 ///
 /// The `cmd` string is passed directly to the shell.
 /// Do not pass unsanitized user input.

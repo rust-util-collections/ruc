@@ -9,8 +9,9 @@ Theme: talking to the outside world — processes, remote hosts, sockets, HTTP. 
 - `exec` runs `bash -c <cmd>`; injection is the **caller's documented responsibility** (docs must say "Do not pass unsanitized user input") — see false-positive-guide FP-2
 - `exec_timeout` drains stdout/stderr in bounded batches with `subprocess`;
   the deadline covers collection through EOF and waiting for the shell.
-  Timeout/error cleanup kills and reaps the shell; on Unix it first kills the
+  Timeout/I/O-error cleanup kills and reaps the shell; on Unix it first kills the
   shell's process group, before the leader's PID can be reused.
+  A completed non-zero exit is already reaped and does not kill background jobs.
 - `timeout_milliseconds == 0` degrades to plain `exec`
 - stdout returned via `from_utf8_lossy` → `String` (documented lossy; FP-8); non-zero exit returns `Err(eg!(stderr))`
 
