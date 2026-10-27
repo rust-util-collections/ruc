@@ -2,6 +2,10 @@
 
 Chained error management, built-in functions, no extra features required.
 
+`.c(d!())` and `.c_with(|| d!())` preserve existing RUC cause chains and
+foreign error types, including errors that implement `Display` without
+`Debug`. Use `lowest_is_type` or `contains_type` to recognize an error type.
+
 ## Usage
 
 > **Tips**: you can easily implement your own `Error` type.

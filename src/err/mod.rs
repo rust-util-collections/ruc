@@ -231,17 +231,18 @@ impl<T, E: Debug + Display + Send + 'static, ERR: Display + Send + 'static>
     #[inline(always)]
     fn c(self, msg: SimpleMsg<E>) -> Result<T> {
         self.map_err(|e| {
-            let err_str = e.to_string();
             let any_e: Box<dyn Any + Send> = Box::new(e);
             let cause: Box<dyn RucError> =
                 match any_e.downcast::<Box<dyn RucError>>() {
                     Ok(ruc_err) => *ruc_err,
-                    Err(_) => {
-                        let inner = SimpleMsg::new(
-                            err_str, msg.file, msg.line, msg.column,
-                        );
-                        Box::new(SimpleError::new(inner, None))
-                    }
+                    Err(e) => Box::new(ForeignError {
+                        err: *e.downcast::<ERR>().unwrap_or_else(|_| {
+                            unreachable!("the boxed error has type ERR")
+                        }),
+                        file: msg.file,
+                        line: msg.line,
+                        column: msg.column,
+                    }),
                 };
             SimpleError::new(msg, Some(cause)).into()
         })
@@ -253,6 +254,49 @@ impl<T, E: Debug + Display + Send + 'static, ERR: Display + Send + 'static>
             Ok(v) => Ok(v),
             Err(e) => Err(e).c(f()),
         }
+    }
+}
+
+// Preserve the foreign type without requiring it to implement Debug.
+struct ForeignError<E> {
+    err: E,
+    file: &'static str,
+    line: u32,
+    column: u32,
+}
+
+impl<E: Display> Debug for ForeignError<E> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        Display::fmt(&self.err, f)
+    }
+}
+
+impl<E: Display + Send + 'static> Display for ForeignError<E> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.generate_log(None))
+    }
+}
+
+impl<E: Display + Send + 'static> RucError for ForeignError<E> {
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<E>()
+    }
+
+    fn get_top_msg(&self) -> String {
+        self.err.to_string()
+    }
+
+    fn get_lowest_msg(&self) -> String {
+        self.get_top_msg()
+    }
+
+    fn get_lowest_err(&self) -> &dyn RucError {
+        self
+    }
+
+    fn get_top_msg_with_dbginfo(&self) -> String {
+        SimpleMsg::new(self.get_top_msg(), self.file, self.line, self.column)
+            .to_string()
     }
 }
 
@@ -550,6 +594,35 @@ mod test {
         assert!(r.is_err());
         let e = r.unwrap_err();
         assert!(e.get_lowest_msg().contains("str error"));
+    }
+
+    #[test]
+    fn t_chain_preserves_foreign_type() {
+        let original = std::io::Error::other("io error");
+        let e = Err::<(), _>(original).c(crate::d!("context")).unwrap_err();
+        assert_eq!(e.lowest_type_id(), TypeId::of::<std::io::Error>());
+        assert_eq!(e.get_lowest_err().type_id(), e.lowest_type_id());
+        assert!(e.contains_type(&std::io::Error::other("probe")));
+        assert_eq!(e.get_lowest_msg(), "io error");
+    }
+
+    #[test]
+    fn t_chain_display_only_error() {
+        struct DisplayOnly;
+        impl Display for DisplayOnly {
+            fn fmt(
+                &self,
+                f: &mut core::fmt::Formatter<'_>,
+            ) -> core::fmt::Result {
+                f.write_str("display only")
+            }
+        }
+
+        let e = Err::<(), _>(DisplayOnly)
+            .c_with(|| crate::d!("context"))
+            .unwrap_err();
+        assert_eq!(e.lowest_type_id(), TypeId::of::<DisplayOnly>());
+        assert_eq!(e.get_lowest_msg(), "display only");
     }
 
     #[test]
