@@ -5,24 +5,26 @@
 
 ## Open
 
+*(none)*
+
+---
+
+## Won't Fix
+
 ### [HIGH] ssh: server host keys are never verified
 
 - Location: `src/ssh.rs`, `RemoteHost::gen_session`.
-- Contract: server identity must be authenticated before remote execution or
-  file transfer can be trusted.
+- Security limitation: the helper does not authenticate the server's identity.
 - Trigger/consequence: a server impersonating the configured endpoint can
   complete the handshake and accept public-key authentication, then supply
   forged command/file results or receive uploaded contents.
 - Guards fail because `handshake` and `userauth_pubkey_file` authenticate the
   protocol/client, while no `host_key`/`known_hosts` comparison authenticates
   the server. Every remote operation shares this session path.
-- Fix/validation: choose an explicit trust policy (known-hosts file or pinned
-  host key), reject unknown/mismatched keys before authentication, and test
-  matching, unknown and changed keys against a local test server. Enforcing
-  trust changes existing connection behavior and needs user acceptance.
-
----
-
-## Won't Fix
-
-*(none)*
+- Disposition: accepted by explicit maintainer decision. SSH is an auxiliary
+  feature and strict host-key verification is outside its intended scope.
+  Mandatory known-hosts or pinning configuration would reject existing
+  connections and add setup disproportionate to this helper's role.
+- Reconsider if the maintainer requests strict server identity verification
+  or SSH becomes a security boundary. A future fix should choose a trust
+  policy and test matching, unknown and changed keys before authentication.
