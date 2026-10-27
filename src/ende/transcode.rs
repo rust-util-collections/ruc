@@ -1,7 +1,9 @@
 use crate::*;
 use std::io::Write;
 
-/// Convert JSON bytes to MessagePack bytes.
+/// Convert one complete JSON document to MessagePack bytes.
+///
+/// Trailing whitespace is accepted; other trailing bytes are rejected.
 pub fn convert_json_to_msgpack(json: &[u8]) -> Result<Vec<u8>> {
     let mut ret = vec![];
 
@@ -10,6 +12,7 @@ pub fn convert_json_to_msgpack(json: &[u8]) -> Result<Vec<u8>> {
 
     serde_transcode::transcode(&mut deserializer, &mut serializer)
         .c(d!())
+        .and_then(|_| deserializer.end().c(d!()))
         .and_then(|_| serializer.into_inner().flush().c(d!()))
         .map(|_| ret)
 }
@@ -93,6 +96,15 @@ mod tests {
     fn t_invalid_inputs() {
         assert!(super::convert_json_to_msgpack(b"{broken json").is_err());
         assert!(super::convert_msgpack_to_json(&[0xc1]).is_err());
+    }
+
+    #[test]
+    fn t_json_trailing_input() {
+        for input in [b"{} trailing".as_slice(), b"{} {}", b"true false"] {
+            assert!(convert_json_to_msgpack(input).is_err());
+        }
+        let encoded = convert_json_to_msgpack(b"{} \n\t\r").unwrap();
+        assert_eq!(convert_msgpack_to_json(&encoded).unwrap(), b"{}");
     }
 
     // pin the documented behavior: integer map keys become strings

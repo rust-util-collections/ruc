@@ -18,6 +18,8 @@ Theme: symmetric data transforms. The one law: **everything round-trips**.
 ### INV-TRANSCODE: Bidirectional Streaming
 - `transcode` converts JSON↔MessagePack via `serde-transcode` streaming — both directions exist (`convert_json_to_msgpack` and `convert_msgpack_to_json`)
 - Serializer must be flushed before taking the inner buffer (`.into_inner().flush()`)
+- JSON input is one complete document: trailing whitespace is accepted, but
+  a second value or trailing garbage must error (`Deserializer::end()`).
 - Transcoding is structure-preserving: numbers/strings/maps survive both directions; if a lossy case exists (e.g., non-string map keys JSON can't express), it must be documented
 
 ### INV-COMPRESS: Level & Format Stability
