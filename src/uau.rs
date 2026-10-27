@@ -46,7 +46,7 @@ impl UauSock {
         let fd = socket(
             AddressFamily::Unix,
             SockType::Datagram,
-            SockFlag::empty(),
+            SockFlag::SOCK_CLOEXEC,
             None,
         )
         .c(d!())?;
@@ -138,6 +138,22 @@ impl UauSock {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn t_socket_not_inherited_by_exec() {
+        let socket = pnk!(UauSock::create(None));
+        let addr = socket.addr().as_abstract().unwrap().to_vec();
+        let mut child = std::process::Command::new("sleep")
+            .arg("5")
+            .spawn()
+            .expect("spawn a child to check descriptor inheritance");
+        drop(socket);
+        let rebound = UauSock::new(&addr, None);
+        // Clean up even if rebinding failed, before asserting the result.
+        let _ = child.kill();
+        child.wait().unwrap();
+        drop(pnk!(rebound));
+    }
 
     #[test]
     fn t_send_recv() {

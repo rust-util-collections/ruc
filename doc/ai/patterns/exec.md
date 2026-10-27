@@ -23,6 +23,8 @@ Theme: talking to the outside world — processes, remote hosts, sockets, HTTP. 
 
 ### INV-UAU: Abstract Socket Semantics (Linux-only)
 - Abstract namespace = leading NUL in `sun_path`; no filesystem cleanup needed, and the fd is closed automatically by `OwnedFd` on drop
+- Sockets use `SOCK_CLOEXEC` so executed children cannot keep the descriptor
+  and abstract address alive after the parent drops its `UauSock`.
 - Receivers must bind an explicit address; anonymous senders get no replies (documented)
 - `recv_buf::<N>`/`recvonly_buf::<N>`: a datagram larger than `N` returns an error (v11.0.0; previously silently truncated) — the low-level `recv(buf)` still truncates silently by design (technical-patterns 6.2)
 - Module is `#[cfg(target_os = "linux")]` gated — never let it leak into macOS/BSD builds
