@@ -220,7 +220,7 @@ where
             }
         }
     }
-    Err(eg!(last_err.unwrap()))
+    Err(last_err.unwrap()).c(d!())
 }
 
 /// Ensure a condition is true, otherwise return an error.
@@ -408,6 +408,20 @@ mod tests {
             Err("fail".to_owned())
         });
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn t_retry_preserves_error_chain() {
+        let mut attempts = 0;
+        let err = retry(2, 0, || -> Result<()> {
+            attempts += 1;
+            Err(eg!("root {}", attempts)).c(d!("operation"))
+        })
+        .unwrap_err();
+        assert_eq!(attempts, 2);
+        assert_eq!(err.type_ids().len(), 3);
+        assert_eq!(err.cause().unwrap().get_top_msg(), "operation");
+        assert_eq!(err.get_lowest_msg(), "root 2");
     }
 
     #[test]
