@@ -7,7 +7,10 @@ Theme: talking to the outside world — processes, remote hosts, sockets, HTTP. 
 
 ### INV-CMD: Process Lifecycle
 - `exec` runs `bash -c <cmd>`; injection is the **caller's documented responsibility** (docs must say "Do not pass unsanitized user input") — see false-positive-guide FP-2
-- `exec_timeout` polls in 100ms steps; on timeout or error it MUST `child.kill()` and `child.wait()` (reap) before returning (technical-patterns 2.2)
+- `exec_timeout` drains stdout/stderr in bounded batches with `subprocess`;
+  the deadline covers collection through EOF and waiting for the shell.
+  Timeout/error cleanup kills and reaps the shell; on Unix it first kills the
+  shell's process group, before the leader's PID can be reused.
 - `timeout_milliseconds == 0` degrades to plain `exec`
 - stdout returned via `from_utf8_lossy` → `String` (documented lossy; FP-8); non-zero exit returns `Err(eg!(stderr))`
 

@@ -8,7 +8,7 @@
 Rust Util Collections, components included:
 
 - Chained error management
-- Local command execution based on the Rust standard library
+- Synchronous local command execution via `bash -c`
   - required features: `cmd`
 - Remote command execution and SFTP file transfer over SSH
   - required features: `ssh`

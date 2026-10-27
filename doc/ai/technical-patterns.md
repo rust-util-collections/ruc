@@ -63,10 +63,11 @@ pass unsanitized user input."
 ### 2.2 Zombie/Orphan Process on Timeout
 **Pattern**: Timeout path returns an error without killing the spawned child,
 or kills it without reaping (`wait`).
-**Where**: `src/cmd.rs` `exec_timeout` polling loop.
+**Where**: `src/cmd.rs` `exec_timeout` output collection and cleanup.
 **Impact**: Process leak; on repeat, fd/PID exhaustion.
-**Check**: Every early-exit path either got `Output` (already reaped) or calls
-`child.kill()` and `child.wait()` (reap) before returning.
+**Check**: Every early-exit path either has a reaped exit status or terminates
+and reaps the command before returning. On Unix, terminate the process group
+before reaping the shell so ordinary descendants cannot outlive the timeout.
 
 ### 2.3 Lossy UTF-8 Masking Real Output
 **Pattern**: `from_utf8_lossy` silently mangles binary output where bytes were
