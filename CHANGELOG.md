@@ -1,5 +1,9 @@
 # Change log
 
+Compiler requirements below are historical release notes. Current development
+uses the official latest stable Rust, without a declared compatible version
+range or minimum compiler; see [the toolchain policy](doc/ai/workflow-policy.md#rust-toolchain).
+
 #### v11.x
 
 - **Breaking** remove APIs deprecated since v10.0

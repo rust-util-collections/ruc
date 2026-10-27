@@ -1,4 +1,4 @@
-# RUC — Claude Code Project Guide
+# Working on RUC
 
 ## What is this project?
 
@@ -76,23 +76,40 @@ ende → ende_hex, ende_base64, ende_compress, ende_zstd, ende_json, ende_msgpac
 
 Output-format features (outside `full`, gate no modules): `ansi` (default, colored errors), `compact` (single-line errors). `compact` is only tested via `--features="full,compact"`.
 
-## Commands
+## AI workflows
 
-- `/x-review` — deep regression analysis (supports: N commits, `all`, hash, range)
-- `/x-fix` — fix audit backlog: resolve `doc/audit.md` → self-review → commit
-- `/x-commit` — self-reviewing commit: review uncommitted changes → fix → validate → bump patch version → commit
-- `/x-overhaul` — full codebase overhaul: review all → fix → commit
+[AGENTS.md](AGENTS.md) is the shared agent entrypoint. Explicitly invoke the
+skills in [`.agents/skills/`](.agents/skills/); arguments are ordinary prompt
+text. Each skill's `agents/openai.yaml` preserves explicit selection with
+`allow_implicit_invocation: false`. Ordinary requests do not implicitly invoke
+commit or version workflows.
 
-Supporting documentation in `.claude/docs/`:
-- `technical-patterns.md` — cataloged bug patterns (HISTORICAL entries actually happened here)
-- `review-core.md` — systematic review methodology + subsystem mapping table (single source of truth)
-- `false-positive-guide.md` — rules for filtering spurious findings
-- `patterns/` — per-subsystem review guides (err-common, exec, algo, ende)
+| Skill | Behavior |
+|---|---|
+| [`$x-review`](.agents/skills/x-review/SKILL.md) | Review the latest commit by default; accepts a scope and `--fix`. Only the audit is writable without `--fix`; never commits. |
+| [`$x-fix`](.agents/skills/x-fix/SKILL.md) | Recheck `doc/audit.md`, fix confirmed Open entries and create atomic local commits. |
+| [`$x-commit`](.agents/skills/x-commit/SKILL.md) | Review and commit intended worktree changes, optionally limited by pathspecs. |
+| [`$x-overhaul`](.agents/skills/x-overhaul/SKILL.md) | Review the latest commit by default (`all` for the full repository), fix confirmed findings and create atomic local commits. |
 
-Additional documentation in `doc/`:
-- `audit.md` — audit findings registry (auto-managed by /x-review and /x-fix)
+Read [workflow-policy.md](doc/ai/workflow-policy.md) for scope resolution,
+worktree ownership, serial validation and local version/commit rules. Commit
+workflows complete one owed version bump for tracked Rust changes since the
+last version commit; docs/config-only work does not create one. They never
+push, open a PR, tag or publish. Publishing remains a human action; an explicit
+user request to push is separate authorization.
 
-Shared tool permissions live in `.claude/settings.json` (`cargo publish`, `git push --force`, destructive cleans are denied — publishing is a human action).
+Supporting guides in `doc/ai/`:
+
+- [review-core.md](doc/ai/review-core.md) — evidence, subsystem mapping and audit registry rules
+- [technical-patterns.md](doc/ai/technical-patterns.md) — bug catalog; HISTORICAL entries are past defects, not current findings
+- [false-positive-guide.md](doc/ai/false-positive-guide.md) — refute candidates before reporting
+- [err/common](doc/ai/patterns/err-common.md), [execution](doc/ai/patterns/exec.md),
+  [algorithms](doc/ai/patterns/algo.md) and [encoding](doc/ai/patterns/ende.md) — subsystem contracts
+
+[doc/audit.md](doc/audit.md) tracks confirmed outstanding findings. Its historical
+empty state is not a fresh whole-repository audit. Preserve existing findings
+and unrelated work; do not run destructive `make cleanall` or rewrite history.
+Workflow instructions describe task scope and do not replace runtime permissions.
 
 ## Conventions
 
@@ -100,11 +117,17 @@ Shared tool permissions live in `.claude/settings.json` (`cargo publish`, `git p
 - Error chaining: always use `.c(d!())`, never `.unwrap()` on `ruc::Result`
 - `#[macro_export]` macros reference crate items via `$crate::`, never `crate::`
 - Feature-gated modules use `#![allow(missing_docs)]` at module level
-- No nightly features — stable Rust only (edition 2024, rustc 1.95+)
+- Use the official latest stable Rust (edition 2024) for development, CI and
+  releases. Update with `rustup update stable` and select it with
+  `RUSTUP_TOOLCHAIN=stable` or `cargo +stable`. Define no compatible Rust version
+  range or minimum compiler; do not add `rust-version`, numeric toolchain pins
+  or older-compiler compatibility shims.
 - `SimpleMsg::file` is `&'static str` (from `file!()`) — zero-alloc error locations
 - AES encryption always uses random 12-byte nonce prepended to ciphertext
 - HTTP client is reused via `LazyLock<Client>` — do not create per-request clients
 - Deprecated APIs delegate to replacements; keep for one major version before removal
+- Keep repository documentation, instructions and commit messages in English; respond to the user in their language.
+- Do not add `Co-Authored-By:` or similar attribution trailers to commits.
 
 ## Environment Variables
 

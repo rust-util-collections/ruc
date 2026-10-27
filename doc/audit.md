@@ -1,6 +1,7 @@
 # Audit Findings
 
-> Auto-managed by /x-review and /x-fix.
+> Managed by `$x-review`, `$x-fix`, `$x-commit` and `$x-overhaul`; see
+> [registry rules](ai/review-core.md#audit-registry).
 
 ## Open
 

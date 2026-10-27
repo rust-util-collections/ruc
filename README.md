@@ -2,7 +2,6 @@
 [![Rust](https://github.com/rust-util-collections/ruc/actions/workflows/rust.yml/badge.svg)](https://github.com/rust-util-collections/ruc/actions/workflows/rust.yml)
 [![Latest Version](https://img.shields.io/crates/v/RUC.svg)](https://crates.io/crates/RUC)
 [![Rust Documentation](https://img.shields.io/badge/api-rustdoc-blue.svg)](https://docs.rs/RUC)
-![Minimum rustc version](https://img.shields.io/badge/rustc-1.95+-lightgray.svg)
 
 # ruc
 
@@ -34,6 +33,9 @@ Rust Util Collections, components included:
 In addition, the `full` feature enables all functional features above
 (the output-format features `ansi` and `compact` are separate).
 
+Use the official latest stable Rust. This repository defines no minimum
+compiler or compatible Rust version range; see [the toolchain policy](doc/ai/workflow-policy.md#rust-toolchain).
+
 ### Documentation
 
 ```shell
@@ -63,6 +65,14 @@ Static documentation:
   - The max value is 255s(`u8::MAX`)
   - Unparsable or out-of-range values fall back to the default(3s)
   - Read once at the first request, later changes have no effect
+
+### AI maintenance
+
+[AGENTS.md](AGENTS.md) is the shared agent guide. Explicit repository workflows
+live in [`.agents/skills/`](.agents/skills/): `$x-review`, `$x-fix`, `$x-commit`
+and `$x-overhaul`. See [the workflow policy](doc/ai/workflow-policy.md) for
+scopes, serial validation and local version/commit behavior, and
+[the review guide](doc/ai/review-core.md) for subsystem contracts and evidence.
 
 ### Gratitude
 

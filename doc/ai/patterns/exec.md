@@ -35,7 +35,7 @@ Theme: talking to the outside world — processes, remote hosts, sockets, HTTP. 
 - [ ] Any string reaching `bash -c` / remote channel built from variables? (CRITICAL if yes and not the documented `exec` primitives)
 - [ ] Every timeout/error early-return kills and reaps spawned children?
 - [ ] Clamps read correctly: upper = `.min`, lower = `.max`?
-- [ ] New env knobs: parsed type documents its natural cap; fallback documented; added to `CLAUDE.md`?
+- [ ] New env knobs: parsed type documents its natural cap; fallback documented; added to `AGENTS.md`?
 - [ ] fd/session/socket released on all paths (Drop or explicit)?
 - [ ] uau code stays inside the Linux cfg gate; oversized-datagram behavior documented (`recv_buf` errors, `recv` truncates)?
 - [ ] No per-call client/session construction where a singleton or reuse exists?

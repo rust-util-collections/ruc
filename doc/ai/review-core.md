@@ -10,10 +10,10 @@ Before analyzing any change, gather context:
 
 1. **Read the diff** — understand every changed line
 2. **Identify affected subsystems** — map changed files using this table.
-   This table is the **single source of truth** for subsystem mapping; commands
-   (`/x-review`, `/x-commit`, `/x-fix`, `/x-overhaul`) reference it instead of duplicating it.
+   This table is the **single source of truth** for subsystem mapping; skills
+   (`$x-review`, `$x-commit`, `$x-fix`, `$x-overhaul`) reference it instead of duplicating it.
 
-   | Changed path | Subsystem | Feature(s) | Pattern guide (`.claude/docs/patterns/`) |
+   | Changed path | Subsystem | Feature(s) | Pattern guide (`doc/ai/patterns/`) |
    |--------------|-----------|------------|------------------------------------------|
    | `src/err/` (mod.rs, macros.rs), `src/lib.rs` | error management | *(always on; `ansi`/`compact` switch formatting)* | `err-common.md` |
    | `src/common.rs` | collections/time/fs macros & helpers | *(always on)* | `err-common.md` |
@@ -28,7 +28,7 @@ Before analyzing any change, gather context:
    | `src/ende/` | encode/decode (hex, base64, zlib, zstd, json, msgpack, transcode) | `ende_*` | `ende.md` |
    | `Cargo.toml` (features section) | feature graph | *(all)* | `technical-patterns.md` Category 4 + `err-common.md` checklist |
 3. **Load subsystem patterns** — read the pattern guide for each affected subsystem (skip unaffected ones)
-4. **Check call sites** — grep for all callers of changed functions (including doc examples and tests)
+4. **Check call sites** — use `rg` to find all callers of changed functions (including doc examples and tests)
 5. **Check related tests** — identify which `#[cfg(test)]` modules cover the changed code
 
 ## Phase 2: Change Classification
@@ -128,10 +128,10 @@ These are enforced project conventions — violations are findings (severity LOW
 - **No new `#[allow(...)]`** — `#![deny(warnings)]` is the law; fix at the source (documented exceptions aside)
 - **Import grouping**: the `use crate::*;` prelude comes first, then std, then external crates; merge common prefixes
 - **Macros**: `$crate::` paths (never `crate::` or unqualified sibling macros), trailing-comma support `$(,)*`
-- **rustfmt**: `max_width = 79` (run `make fmt`)
+- **rustfmt**: `max_width = 79`; check with `cargo fmt --all -- --check` and format only owned files
 - **Doc-code alignment**: public API changes must update doc comments, `README.md`,
-  `doc/*.md`, `CLAUDE.md` (layout/feature/env tables), the Phase 1 mapping table
-  above, and the affected `.claude/docs/patterns/` guide
+  `doc/*.md`, `AGENTS.md` (layout/feature/env tables), the Phase 1 mapping table
+  above, and the affected `doc/ai/patterns/` guide
 
 ## Phase 5: Reporting
 
@@ -161,4 +161,28 @@ Only report findings with **concrete evidence** from the code. Never report:
 - Style preferences not related to correctness
 - "Consider" suggestions without a clear downside to the current code
 
-Consult `.claude/docs/false-positive-guide.md` before finalizing any finding.
+Consult `doc/ai/false-positive-guide.md` before finalizing any finding.
+
+
+## Audit registry
+
+[../audit.md](../audit.md) is the current outstanding registry, managed by all
+four skills. A standalone review may update it without modifying code; an
+explicit no-writes request leaves it untouched. An empty registry or HISTORICAL
+bug catalog does not establish a current full audit.
+
+- **Open**: confirmed, actionable defects, including proposed fixes awaiting
+  required validation or blocked on ownership/access.
+- **Won't Fix**: real defects whose complete safe fix has disproportionate
+  cost or regression risk. Include the reason and a condition to reconsider.
+  A failed check or missing access is a blocker, not this disposition.
+
+Recheck retained entries against current code. Deduplicate by root cause and
+sort by demonstrated severity. Narrow scopes preserve unrelated entries;
+`all` rechecks the entire registry. Remove fixed, obsolete or disproven claims
+with evidence in the fix/report/history. Do not add dates or a Resolved section.
+
+Each entry records severity, subsystem, location, required contract, reachable
+trigger, observed consequence, why guards fail, and minimal fix/validation.
+Only remove a fixed Open entry after required checks pass; include its removal
+with the corresponding fix. Restore it if a final gate exposes the defect.

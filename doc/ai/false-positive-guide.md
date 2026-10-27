@@ -34,7 +34,7 @@ does NOT apply.
 ## FP-5: Clippy Would Catch It
 
 **Pattern**: Reporting lints that `cargo clippy` + `#![deny(warnings)]` already enforce.
-**Rule**: CI gates on clippy with deny-all. Do not duplicate clippy. Focus on semantic correctness clippy cannot see (clamp direction, cfg polarity, nonce freshness, round-trip symmetry).
+**Rule**: `make lint` runs clippy with deny-all; CI build/test commands are defined in the checked-in CI files. Do not claim that every CI provider runs clippy. Do not duplicate clippy findings. Focus on semantic correctness clippy cannot see (clamp direction, cfg polarity, nonce freshness, round-trip symmetry).
 
 ## FP-6: "Consider" Without Concrete Downside
 

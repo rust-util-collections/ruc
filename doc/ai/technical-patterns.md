@@ -7,7 +7,7 @@ Every pattern marked **[HISTORICAL]** actually occurred in this codebase and
 was fixed in a past release — treat these as the highest-value checks.
 
 **Scope note**: This file covers cross-cutting categories. Subsystem-specific
-invariants and checklists live in `.claude/docs/patterns/`:
+invariants and checklists live in `doc/ai/patterns/`:
 `err-common.md`, `exec.md`, `algo.md`, `ende.md` — always load the relevant
 guide for affected subsystems.
 

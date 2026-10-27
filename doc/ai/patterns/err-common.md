@@ -37,6 +37,6 @@ Features: always compiled; `ansi` / `compact` switch error-output formatting onl
 - [ ] New macro uses `$crate::`, supports trailing comma, has a doc comment + usage example?
 - [ ] No allocation added to `d!()`/`eg!()` happy paths?
 - [ ] Error `Display`/`Debug` changes keep chain output parseable (delimiter/indent honored in both compact and normal modes)?
-- [ ] New env-var reads: documented in `CLAUDE.md` §Environment Variables, read-once if hot?
+- [ ] New env-var reads: documented in `AGENTS.md` §Environment Variables, read-once if hot?
 - [ ] Tests touching env vars are serial-safe?
 - [ ] Feature graph edits in `Cargo.toml`: leaf ∈ group ∈ `full` (technical-patterns 4.3)?

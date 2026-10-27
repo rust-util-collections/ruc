@@ -1,0 +1,5 @@
+interface:
+  display_name: "RUC Review"
+  short_description: "Review RUC changes and feature contracts"
+policy:
+  allow_implicit_invocation: false

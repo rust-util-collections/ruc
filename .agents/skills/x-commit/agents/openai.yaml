@@ -1,0 +1,5 @@
+interface:
+  display_name: "RUC Commit"
+  short_description: "Review and commit intended RUC changes"
+policy:
+  allow_implicit_invocation: false
